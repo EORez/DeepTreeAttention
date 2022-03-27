@@ -33,6 +33,7 @@ data_dir: /blue/ewhite/b.weinstein/DeepTreeAttention/
 convert_h5: True
 #Overwrite existing crops
 replace: True
+existing_test_csv:
 #Use existing plotIDs for train/test split
 new_train_test_split: True
 

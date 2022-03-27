@@ -397,7 +397,12 @@ class TreeData(LightningDataModule):
                         print("No dead trees predicted")
             else:
                 self.crowns = gpd.read_file("{}/crowns.shp".format(self.data_dir))
-
+            
+            #Remove crowns from test dataset if specified
+            if self.config["existing_test_csv"]:
+                existing_test = pd.read_csv(self.config["existing_test_csv"])
+                self.crowns = self.crowns[~(self.crowns.individualID.isin(existing_test.individualID))]
+            
             annotations = generate.generate_crops(
                 self.crowns,
                 savedir=self.config["crop_dir"],

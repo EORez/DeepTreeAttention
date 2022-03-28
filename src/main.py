@@ -59,13 +59,13 @@ class TreeModel(LightningModule):
              })
                 
         
-        #self.save_hyperparameters()
-        
         #Weighted loss
         if torch.cuda.is_available():
             self.loss_weight = torch.tensor(loss_weight, device="cuda", dtype=torch.float)
         else:
-            self.loss_weight = torch.tensor(loss_weight, dtype=torch.float)        
+            self.loss_weight = torch.ones((classes))    
+        
+        self.save_hyperparameters(ignore=["loss_weight"]) 
 
         
     def training_step(self, batch, batch_idx):

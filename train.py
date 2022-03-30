@@ -97,7 +97,6 @@ trainer = Trainer(
 trainer.fit(m, datamodule=data_module)
 #Save model state dict
 torch.save(m.model.state_dict(), "/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pt".format(comet_logger.experiment.id))
-trainer.save_checkpoint()
 
 results = m.evaluate_crowns(
     data_module.val_dataloader(),

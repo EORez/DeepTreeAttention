@@ -11,6 +11,7 @@ from src.models import Hang2020
 from src import visualize
 from src import metrics
 import sys
+import torch
 from pytorch_lightning import Trainer
 import subprocess
 from pytorch_lightning.loggers import CometLogger
@@ -94,8 +95,10 @@ trainer = Trainer(
     logger=comet_logger)
 
 trainer.fit(m, datamodule=data_module)
-#Save model checkpoint
-trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
+#Save model state dict
+torch.save(m.model.state_dict(), "/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pt".format(comet_logger.experiment.id))
+trainer.save_checkpoint()
+
 results = m.evaluate_crowns(
     data_module.val_dataloader(),
     crowns = data_module.crowns,

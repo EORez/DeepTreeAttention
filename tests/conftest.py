@@ -90,13 +90,13 @@ def dm(config, ROOT):
     return dm
 
 @pytest.fixture(scope="session")
-def experiment():
+def comet_logger():
     if not "GITHUB_ACTIONS" in os.environ:
         from pytorch_lightning.loggers import CometLogger        
         COMET_KEY = os.getenv("COMET_KEY")
         comet_logger = CometLogger(api_key=COMET_KEY,
                                    project_name="DeepTreeAttention", workspace="bw4sz",auto_output_logging = "simple")
-        return comet_logger.experiment
+        return comet_logger
     else:
         return None
 
@@ -112,7 +112,7 @@ def m(config, dm, ROOT):
 #Training module
 @pytest.fixture(scope="session")
 def species_model_path(config, dm):
-    model = Hang2020.vanilla_CNN(bands=3, classes=3)
+    model = Hang2020.spectral_network(bands=3, classes=3)
     m = main.TreeModel(model=model, classes=3, config=config, label_dict=dm.species_label_dict)
     m.ROOT = "{}/tests/".format(ROOT)
     filepath = "{}/model.pl".format(tempfile.gettempdir())

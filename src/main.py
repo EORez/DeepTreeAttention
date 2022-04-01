@@ -58,20 +58,22 @@ class TreeModel(LightningModule):
              "Top {} Accuracy".format(self.config["top_k"]): top_k_recall
              })
                 
-        
+
         #Weighted loss
+        if isinstance(loss_weight, type(None)):
+            loss_weight = torch.ones((classes))         
+            
         if torch.cuda.is_available():
             self.loss_weight = torch.tensor(loss_weight, device="cuda", dtype=torch.float)
         else:
-            self.loss_weight = torch.ones((classes))    
+            self.loss_weight = torch.tensor(loss_weight, dtype=torch.float)
+            
+        self.save_hyperparameters(ignore=["loss_weight"])
         
-        self.save_hyperparameters(ignore=["loss_weight"]) 
 
-        
     def training_step(self, batch, batch_idx):
         """Calculate train loss
         """
-        #allow for empty data if data augmentation is generated
         individual, inputs, y = batch
         images = inputs["HSI"]
         y_hat = self.model.forward(images)
@@ -207,7 +209,7 @@ class TreeModel(LightningModule):
         self.model.eval() 
         with torch.no_grad():
             class_probs = self.model(image)
-            class_probs = F.softmax(class_probs)
+            class_probs = F.softmax(class_probs[-1])
         class_probs = class_probs.numpy()
         index = np.argmax(class_probs)
         label = self.index_to_label[index]
@@ -240,7 +242,7 @@ class TreeModel(LightningModule):
         self.model.eval() 
         with torch.no_grad():
             class_probs = self.model(image) 
-            class_probs = F.softmax(class_probs, 1)
+            class_probs = F.softmax(class_probs[-1], 1)
         class_probs = class_probs.detach().numpy()
         index = np.argmax(class_probs)
         label = self.index_to_label[index]
@@ -267,7 +269,7 @@ class TreeModel(LightningModule):
         
         return pred
     
-    def predict_dataloader(self, data_loader, test_crowns=None, test_points=None, plot_n_individuals=1, return_features=False, experiment=None, train=True):
+    def predict_dataloader(self, data_loader, return_features=False, train=True):
         """Given a file with paths to image crops, create crown predictions 
         The format of image_path inform the crown membership, the files should be named crownid_counter.png where crownid is a
         unique identifier for each crown and counter is 0..n pixel crops that belong to that crown.
@@ -322,45 +324,13 @@ class TreeModel(LightningModule):
         if train:
             df["label"] = labels
             df["true_taxa"] = df["label"].apply(lambda x: self.index_to_label[x])            
-            
-        if experiment:
-            #load image pool and crown predicrions
-            rgb_pool = glob.glob(self.config["rgb_sensor_pool"], recursive=True)            
-            plt.ion()
-            for index, row in df.sample(n=plot_n_individuals).iterrows():
-                fig = plt.figure(0)
-                ax = fig.add_subplot(1, 1, 1)                
-                individual = row["individual"]
-                geom = test_crowns[test_crowns.individual == individual].geometry.iloc[0]
-                left, bottom, right, top = geom.bounds
-                
-                #Find image
-                img_path = neon_paths.find_sensor_path(lookup_pool=rgb_pool, bounds=geom.bounds)
-                src = rasterio.open(img_path)
-                img = src.read(window=rasterio.windows.from_bounds(left-10, bottom-10, right+10, top+10, transform=src.transform))  
-                img_transform = src.window_transform(window=rasterio.windows.from_bounds(left-10, bottom-10, right+10, top+10, transform=src.transform))  
-                
-                #Plot crown
-                patches = [PolygonPatch(geom, edgecolor='red', facecolor='none')]
-                show(img, ax=ax, transform=img_transform)                
-                ax.add_collection(PatchCollection(patches, match_original=True))
-                
-                #Plot field coordinate
-                stem = test_points[test_points.individualID == individual]
-                stem.plot(ax=ax)
-                
-                plt.savefig("{}/{}.png".format(self.tmpdir, row["individual"]))
-                experiment.log_image("{}/{}.png".format(self.tmpdir, row["individual"]), name="crown: {}, True: {}, Predicted {}".format(row["individual"], row.true_taxa, row.pred_taxa_top1))
-                src.close()
-                plt.close("all")
-            plt.ioff()
     
         if return_features:            
             return df, predictions        
         else:
             return df
     
-    def evaluate_crowns(self, data_loader, crowns, points=None, experiment=None):
+    def evaluate_crowns(self, data_loader, crowns, experiment=None):
         """Crown level measure of accuracy
         Args:
             data_loader: TreeData dataset
@@ -372,10 +342,6 @@ class TreeModel(LightningModule):
         """
         results, features = self.predict_dataloader(
             data_loader=data_loader,
-            plot_n_individuals=self.config["plot_n_individuals"],
-            experiment=experiment,
-            test_crowns=crowns,
-            test_points=points,
             return_features=True
         )
         

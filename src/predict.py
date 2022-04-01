@@ -10,6 +10,7 @@ from src.main import TreeModel
 from src.models import dead
 from src.utils import preprocess_image
 from src.CHM import postprocess_CHM
+from src.models import Hang2020
 from torch.utils.data import Dataset
 from torchvision import transforms
 import torch
@@ -86,7 +87,7 @@ def my_collate(batch):
     
     return default_collate(batch)
 
-def predict_tile(PATH, dead_model_path, species_model_path, config):
+def predict_tile(PATH, dead_model_path, species_model_path, config, savedir):
     #get rgb from HSI path
     HSI_basename = os.path.basename(PATH)
     if "hyperspectral" in HSI_basename:
@@ -112,22 +113,26 @@ def predict_tile(PATH, dead_model_path, species_model_path, config):
     if filtered_crowns.empty:
         raise ValueError("No crowns left after CHM filter. {}".format(crowns.head(n=10)))
     
-    dead_label, dead_score = predict_dead(crowns=filtered_crowns, dead_model_path=dead_model_path, rgb_tile=rgb_path, config=config)
-    filtered_crowns["dead_label"] = dead_label
-    filtered_crowns["dead_score"] = dead_score
-    
+    if dead_model_path:
+        dead_label, dead_score = predict_dead(crowns=filtered_crowns, dead_model_path=dead_model_path, rgb_tile=rgb_path, config=config)
+        filtered_crowns["dead_label"] = dead_label
+        filtered_crowns["dead_score"] = dead_score
+        
     # Load species model
     m = TreeModel.load_from_checkpoint(species_model_path)
     trees, features = predict_species(HSI_path=PATH, crowns=filtered_crowns, m=m, config=config)
 
     # Remove predictions for dead trees
-    trees.loc[(trees.dead_label==1) & (trees.dead_score > config["dead_threshold"]),"pred_taxa_top1"] = "DEAD"
-    trees.loc[(trees.dead_label==1) & (trees.dead_score > config["dead_threshold"]),"pred_label_top1"] = None
-    trees.loc[(trees.dead_label==1) & (trees.dead_score > config["dead_threshold"]),"top1_score"] = None
-    
+    if dead_model_path:
+        trees.loc[(trees.dead_label==1) & (trees.dead_score > config["dead_threshold"]),"pred_taxa_top1"] = "DEAD"
+        trees.loc[(trees.dead_label==1) & (trees.dead_score > config["dead_threshold"]),"pred_label_top1"] = None
+        trees.loc[(trees.dead_label==1) & (trees.dead_score > config["dead_threshold"]),"top1_score"] = None
+        
     # Calculate crown area
     trees["crown_area"] = crowns.geometry.area
-        
+    trees = gpd.GeoDataFrame(trees, geometry="geometry")    
+    trees.to_file(os.path.join(savedir, "{}.shp".format(os.path.splitext(HSI_basename)[0])))
+    
     return trees
 
 def predict_crowns(PATH):

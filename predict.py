@@ -38,12 +38,11 @@ tiles = find_rgb_files(site="OSBS", config=config, year="2019")
 hyperspectral_pool = glob(config["HSI_sensor_pool"], recursive=True)
 rgb_pool = glob(config["rgb_sensor_pool"], recursive=True)
 
-cpu_client = start(cpus=20)
-
+cpu_client = start(cpus=60,mem_size="8GB")
 tif_futures = cpu_client.map(convert, tiles, hyperspectral_pool=hyperspectral_pool, savedir = config["HSI_tif_dir"], year="2019")
 wait(tif_futures)
 
-species_model_path = "/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/2dcb290ab6d3462f933c8252c3cdd8a0.pl"
+species_model_path = "/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/1ab0037484104efc98a024f0804d55e0.pl"
 dead_model_path = "/orange/idtrees-collab/DeepTreeAttention/Dead/snapshots/c4945ae57f4145948531a0059ebd023c.pl"
 hsi_tifs = []
 for x in tif_futures:
@@ -53,13 +52,28 @@ for x in tif_futures:
         pass
 
 cpu_client.close()    
-gpu_client = start(gpus=10, mem_size="50GB")
+gpu_client = start(gpus=15, mem_size="50GB")
 
 #No daemonic dask children
 config["workers"] = 0
 futures =  []
+
+#Save each file seperately in a dir named for the species model
+savedir = os.path.join("/blue/ewhite/b.weinstein/DeepTreeAttention/results/",os.path.basename(species_model_path))
+try:
+    os.mkdir(savedir)
+except:
+    pass
+
 for x in hsi_tifs:
-    future = gpu_client.submit(predict.predict_tile, x, dead_model_path = dead_model_path, species_model_path=species_model_path, config=config)
+    future = gpu_client.submit(
+        predict.predict_tile,
+        x,
+        dead_model_path=dead_model_path,
+        species_model_path=species_model_path,
+        config=config,
+        savedir=savedir
+    )
     futures.append(future)
 
 wait(futures)
@@ -73,7 +87,3 @@ for future in futures:
     except Exception as e:
         print(e)
         print(traceback.print_exc())
-
-predictions = pd.concat(predictions)
-predictions = gpd.GeoDataFrame(predictions, geometry="geometry")
-predictions.to_file("results/OSBS_predictions.shp")

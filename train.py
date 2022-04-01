@@ -63,8 +63,14 @@ comet_logger.experiment.log_table("test.csv", data_module.test)
 if not config["use_data_commit"]:
     comet_logger.experiment.log_table("novel_species.csv", data_module.novel)
 
+
 #Load from state dict of previous run
-model = Hang2020.spectral_network(bands=config["bands"], classes=data_module.num_classes)
+if config["pretrain_state_dict"]:
+    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=data_module.num_classes, bands=config["bands"])
+else:
+    model = Hang2020.spectral_network(bands=config["bands"], classes=data_module.num_classes)
+    
+#Load from state dict of previous run
 
 #Loss weight, balanced
 loss_weight = []
@@ -102,10 +108,18 @@ results = m.evaluate_crowns(
     data_module.val_dataloader(),
     crowns = data_module.crowns,
     experiment=comet_logger.experiment,
-    points=data_module.canopy_points
 )
 rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 
+#Visualizations
+visualize.plot_spectra(results, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
+visualize.rgb_plots(
+    df=results,
+    config=config,
+    test_crowns=data_module.crowns,
+    test_points=data_module.canopy_points,
+    plot_n_individuals=config["plot_n_individuals"],
+    experiment=comet_logger.experiment)
 visualize.confusion_matrix(
     comet_experiment=comet_logger.experiment,
     results=results,

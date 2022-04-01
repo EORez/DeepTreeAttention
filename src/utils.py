@@ -32,12 +32,18 @@ def read_config(config_path):
 
 def preprocess_image(image, channel_is_first=False):
     """Preprocess a loaded image, if already C*H*W set channel_is_first=True"""
+    
+    #Clip first and last 10 bands
+    if image.shape[0] > 3:
+        image = image[10:,:,:]
+        image = image[:-10,:,:]
+        
     img = np.asarray(image, dtype='float32')
-    data = img.reshape(img.shape[0], np.prod(img.shape[1:]))
+    data = img.reshape(img.shape[0], np.prod(img.shape[1:])).T
     
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', UserWarning)    
-        data  = preprocessing.scale(data)
+        data  = preprocessing.minmax_scale(data, axis=1).T
     img = data.reshape(img.shape)
     
     if not channel_is_first:
@@ -51,7 +57,10 @@ def load_image(img_path, image_size):
     """Load and preprocess an image for training/prediction"""
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', rio.errors.NotGeoreferencedWarning)
-        image = rio.open(img_path).read()       
+        image = rio.open(img_path).read() 
+    
+    #Clip first 10 bands of each side
+    
     image = preprocess_image(image, channel_is_first=True)
     
     #resize image

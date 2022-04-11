@@ -41,7 +41,13 @@ class year_ensemble(LightningModule):
         x = F.relu(x)
         
         return x
+    
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.config["lr"])
         
+        return optimizer
+        
+
     def train_dataloader(self):
         data_loader = torch.utils.data.DataLoader(
             self.train_ds,

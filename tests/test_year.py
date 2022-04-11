@@ -16,5 +16,5 @@ def test_year_ensemble(m, dm, config):
                                val_labels=results.label,
                                config=config,
                                classes=features.shape[0], years=1)
-    trainer = Trainer()
+    trainer = Trainer(fast_dev_run=True)
     trainer.fit(model)

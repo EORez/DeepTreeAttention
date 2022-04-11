@@ -1,79 +1,81 @@
-#Linear year converter
-#For a given HSI year, convert to 2021 by linear mapping
 from pytorch_lightning import LightningModule
 import pandas as pd
 import torch
 from torch.nn import functional as F
 from torch.utils.data import Dataset
-import rasterio as rio
+import numpy as np
 
-class year_dataset(Dataset):
-    """Yield a pair of pixels for linear regression
-    Args:
-        csv_file: path to a .csv file with image_path column
-        band: band number to select from image matrix
-        year: input year to convert to target_year
-        target_year: year to convert into
-    """
-    def __init__(self, csv_file, band, year, target_year = 2019):
-        self.annotations = pd.read_csv(csv_file)
-        self.band = band
-        self.individuals = self.annotations.individualID.unique()
-        self.year = year
-        self.target_year = target_year
-    
+class ensemble_dataset(Dataset):
+    """Generate dataset for learning ensemble among years"""
+    def __init__(self, data_dict, labels=None):
+        self.data_dict = data_dict
+        self.keys = list(data_dict.keys())
+        self.labels = labels
+        
     def __len__(self):
-        return len(self.individuals)
+        return len(list(self.data_dict.keys()))
     
     def __getitem__(self, index):
-        individual = self.individuals[index]
-        target_image = self.annotations[(self.annotations.individualID == individual) &  (self.annotations.tile_year == self.target_year)].image_path.values[0]
-        input_image = self.annotations[(self.annotations.individualID == individual) &  (self.annotations.tile_year == self.year)].image_path.values[0]
-        
-        input_data = rio.open(input_image).read()
-        input_data = input_data[self.band,:,:].flatten()
-        target_data = rio.open(target_image).read()
-        target_data = target_data[self.band,:,:].flatten()
-                
-        return target_data, input_data
-        
-class year_converter(LightningModule):
-    def __init__(self, csv_file, band, year, config):
-        super(year_converter, self).__init__()
-        self.csv_file = csv_file
-        self.config = config
-        self.band = band
-        self.year = year
+        year_results = self.data_dict[self.keys[index]]
+        year_stack = torch.tensor(np.concatenate(year_results))
+        if self.labels:
+            label = torch.tensor(self.labels[index])
+            return torch.tensor(year_stack), label
+        else:
+            return torch.tensor(year_stack)
     
-        #Linear 
-        self.linear = torch.nn.Linear(1, 1) 
-    
-    def forward(self, x):
-        x = self.linear(x)
+class year_ensemble(LightningModule):
+    def __init__(self, train_dict, train_labels, val_dict, val_labels, config, classes, years):
+        super().__init__()
+        
+        self.train_ds = ensemble_dataset(train_dict,train_labels)
+        self.val_ds = ensemble_dataset(val_labels,val_labels)
+        #Layers
+        self.fc1 = torch.nn.Linear(in_features=classes * years, out_features=classes* 2)
+        self.fc2 = torch.nn.Linear(in_features=classes * years, out_features=classes)
+        
+    def forward(self,x):
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+        x = F.relu(x)
         
         return x
-    
-    def training_step(self, batch):
-        x, y = batch
-        y_hat = self(x)
-        loss = F.mse_loss(y_hat,y)
         
-        return loss
-    
     def train_dataloader(self):
-        self.train_ds = year_dataset(self.csv_file, self.band, self.year)
         data_loader = torch.utils.data.DataLoader(
             self.train_ds,
             batch_size=self.config["batch_size"],
-            shuffle=True,
             num_workers=self.config["workers"],
         )
         
         return data_loader
     
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+    def val_dataloader(self):
+        data_loader = torch.utils.data.DataLoader(
+            self.val_ds,
+            batch_size=self.config["batch_size"],
+            num_workers=self.config["workers"],
+        )
         
-        return optimizer
+        return data_loader
+    
+    def training_step(self, batch):
+        x,y = batch
+        y_hat = self(x)
+        loss = F.cross_entropy(y_hat, y) 
+        
+        self.log("train_ensemble_loss", loss)
+        
+        return loss
+    
 
+    def validation_step(self, batch):
+        x,y = batch
+        y_hat = self(x)
+        loss = F.cross_entropy(y_hat, y) 
+        self.log("val_ensemble_loss", loss)
+        
+        return loss
+    
     

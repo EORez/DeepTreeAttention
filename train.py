@@ -8,6 +8,7 @@ from src import main
 from src import data
 from src import start_cluster
 from src.models import Hang2020
+from src.models import year
 from src import visualize
 from src import metrics
 from src import utils

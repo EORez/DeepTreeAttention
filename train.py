@@ -91,8 +91,9 @@ comet_logger.experiment.log_parameter("loss_weight", loss_weight)
 year_model = {}
 year_results = []
 year_individuals = {}
-
-for x in data_module.train.tile_year.unique():
+train_year_individuals = {}
+years = data_module.train.tile_year.unique()
+for x in years:
     with comet_logger.experiment.context_manager(x):
         
         #Set the dataloaders by year
@@ -129,6 +130,16 @@ for x in data_module.train.tile_year.unique():
         
         #Save model checkpoint
         trainer.save_checkpoint(os.path.join(model_dir,"{}_{}.pl".format(comet_logger.experiment.id, x)))
+        
+        #Get train features
+        train_results, train_features = year_model[x].predict_dataloader(dm.train_dataloader(), return_features=True)   
+        for index, row in enumerate(train_features):
+            try:
+                train_year_individuals[train_results.individual.iloc[index]].append(row)
+            except:
+                train_year_individuals[train_results.individual.iloc[index]] = [row]
+        
+        #Get test features
         results, features = year_model[x].predict_dataloader(
             data_loader=data_module.val_dataloader(),
             experiment=None,
@@ -163,15 +174,27 @@ for x in data_module.train.tile_year.unique():
         )
 
 results = pd.concat(year_results)
-results = utils.ensemble(results, year_individuals)
+
+#Train meta-learner        
+ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
+                           train_labels=train_results.label,
+                           val_dict=year_individuals,
+                           val_labels=results.label,
+                           config=config,
+                           classes=len(results.label.unique()),
+                           years=years)
+
+predicted_label, score = year.run_ensemble(ensemble_model)
+results["temporal_label_top1"] = predicted_label
+results["temporal_top1_score"] = score
 
 #Log prediction
 comet_logger.experiment.log_table("test_predictions.csv", results)
 
 #Confusion matrix
 temporal_only = results.groupby("individual").apply(lambda x: x.head(1)).reset_index(drop=True)
-temporal_only["pred_taxa_top1"] = temporal_only["temporal_pred_label_top1"].apply(lambda x: data_module.label_to_taxonID[x]) 
-temporal_only["pred_label_top1"] = temporal_only["temporal_pred_label_top1"]
+temporal_only["pred_taxa_top1"] = temporal_only["temporal_label_top1"].apply(lambda x: data_module.label_to_taxonID[x]) 
+temporal_only["pred_label_top1"] = temporal_only["temporal_label_top1"]
 
 #Temporal function
 temporal_micro = torchmetrics.functional.accuracy(preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),target=torch.tensor(temporal_only.label.values), num_classes=data_module.num_classes,average="micro")

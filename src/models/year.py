@@ -1,5 +1,4 @@
-from pytorch_lightning import LightningModule
-import pandas as pd
+from pytorch_lightning import LightningModule, Trainer
 import torch
 from torch.nn import functional as F
 from torch.utils.data import Dataset
@@ -20,9 +19,9 @@ class ensemble_dataset(Dataset):
         year_stack = torch.tensor(np.concatenate(year_results))
         if not isinstance(type(self.labels), type(None)):
             label = torch.tensor(self.labels[index])
-            return year_stack.unsqueeze(0), label
+            return year_stack, label
         else:
-            return year_stack.unsqueeze(0)
+            return year_stack
     
 class year_ensemble(LightningModule):
     def __init__(self, train_dict, train_labels, val_dict, val_labels, config, classes, years):
@@ -30,7 +29,7 @@ class year_ensemble(LightningModule):
         self.config = config
         self.train_ds = ensemble_dataset(train_dict,labels=train_labels)
         self.val_ds = ensemble_dataset(val_dict,labels=val_labels)
-        self.fc1 = torch.nn.Linear(in_features=(1,classes * years), out_features=classes* 2)
+        self.fc1 = torch.nn.Linear(in_features=classes * years, out_features=classes* 2)
         self.fc2 = torch.nn.Linear(in_features=classes * 2, out_features=classes)
         
     def forward(self,x):
@@ -74,7 +73,7 @@ class year_ensemble(LightningModule):
         return loss
     
 
-    def validation_step(self, batch):
+    def validation_step(self, batch, batch_idx):
         x,y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y) 
@@ -82,4 +81,21 @@ class year_ensemble(LightningModule):
         
         return loss
     
+    def predict_step(self, batch, batch_idx):
+        x,y = batch
+        y_hat = self(x)
+        scores = F.softmax(y_hat, dim=1)
+        
+        return scores 
+    
+def run_ensemble(model, config, logger=None):
+    """Train and predict an ensemble model"""
+    trainer = Trainer(gpus=config["gpus"], max_epochs=config["ensemble_epochs"], logger=logger)
+    trainer.fit(model)
+    gather = trainer.predict(dataloaders=model.val_dataloader())
+    df = np.concatenate(gather)
+    predicted_label = np.argmax(df, 1)
+    score = np.max(df, 1)
+    
+    return predicted_label, score
     

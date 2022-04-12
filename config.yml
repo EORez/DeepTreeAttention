@@ -61,6 +61,9 @@ top_k: 4
 #Number of individuals to plot in comet graphics tab
 plot_n_individuals: 100
 
+#Ensemble
+ensemble_epochs: 30
+
 #Predict
 predict_batch_size: 1024
 dead_threshold: 0.95

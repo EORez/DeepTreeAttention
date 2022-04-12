@@ -132,7 +132,7 @@ for x in years:
         trainer.save_checkpoint(os.path.join(model_dir,"{}_{}.pl".format(comet_logger.experiment.id, x)))
         
         #Get train features
-        train_results, train_features = year_model[x].predict_dataloader(dm.train_dataloader(), return_features=True)   
+        train_results, train_features = year_model[x].predict_dataloader(data_module.train_dataloader(), return_features=True)   
         for index, row in enumerate(train_features):
             try:
                 train_year_individuals[train_results.individual.iloc[index]].append(row)

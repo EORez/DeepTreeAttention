@@ -18,21 +18,20 @@ class ensemble_dataset(Dataset):
     def __getitem__(self, index):
         year_results = self.data_dict[self.keys[index]]
         year_stack = torch.tensor(np.concatenate(year_results))
-        if self.labels:
+        if not isinstance(type(self.labels), type(None)):
             label = torch.tensor(self.labels[index])
-            return torch.tensor(year_stack), label
+            return year_stack.unsqueeze(0), label
         else:
-            return torch.tensor(year_stack)
+            return year_stack.unsqueeze(0)
     
 class year_ensemble(LightningModule):
     def __init__(self, train_dict, train_labels, val_dict, val_labels, config, classes, years):
         super().__init__()
-        
-        self.train_ds = ensemble_dataset(train_dict,train_labels)
-        self.val_ds = ensemble_dataset(val_labels,val_labels)
-        #Layers
-        self.fc1 = torch.nn.Linear(in_features=classes * years, out_features=classes* 2)
-        self.fc2 = torch.nn.Linear(in_features=classes * years, out_features=classes)
+        self.config = config
+        self.train_ds = ensemble_dataset(train_dict,labels=train_labels)
+        self.val_ds = ensemble_dataset(val_dict,labels=val_labels)
+        self.fc1 = torch.nn.Linear(in_features=(1,classes * years), out_features=classes* 2)
+        self.fc2 = torch.nn.Linear(in_features=classes * 2, out_features=classes)
         
     def forward(self,x):
         x = self.fc1(x)
@@ -70,7 +69,6 @@ class year_ensemble(LightningModule):
         x,y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y) 
-        
         self.log("train_ensemble_loss", loss)
         
         return loss

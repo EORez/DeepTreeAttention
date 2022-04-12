@@ -59,14 +59,14 @@ def random_crop(index):
     bounds = rasterio.windows.bounds(window, transform)
     #crop rgb
     for tile in selected_rgb:
-        crop(bounds=bounds, sensor_path= tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/RGB/", basename=os.path.splitext(os.path.basename(tile)[0]))
+        crop(bounds=bounds, sensor_path= tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/RGB/", basename=os.path.splitext(os.path.basename(tile))[0])
     
     for tile in selected_chm:
-        crop(bounds=bounds, sensor_path= tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/CHM/", basename=os.path.splitext(os.path.basename(tile)[0]))
+        crop(bounds=bounds, sensor_path= tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/CHM/", basename=os.path.splitext(os.path.basename(tile))[0])
     #HSI
     for tile in selected_hsi:
         filename = neon_paths.lookup_and_convert(rgb_pool=rgb_pool, hyperspectral_pool=hsi_pool, savedir=config["HSI_tif_dir"], bounds=bounds)            
-        crop(bounds=bounds, sensor_path= filename, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/HSI/", basename=os.path.splitext(os.path.basename(tile)[0]))
+        crop(bounds=bounds, sensor_path= filename, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/HSI/", basename=os.path.splitext(os.path.basename(tile))[0])
 
 futures = []
 for x in range(100):

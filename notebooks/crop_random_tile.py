@@ -66,7 +66,7 @@ def random_crop(index):
         crop(bounds=bounds, sensor_path= tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/CHM/", basename=os.path.splitext(os.path.basename(selected_rgb[index]))[0])
     #HSI
     for index, tile in enumerate(hsi_tifs):
-        crop(bounds=bounds, sensor_path= filename, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/HSI/", basename=os.path.splitext(os.path.basename(selected_rgb[index]))[0])
+        crop(bounds=bounds, sensor_path=tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/HSI/", basename=os.path.splitext(os.path.basename(selected_rgb[index]))[0])
 
 futures = []
 for x in range(100):

@@ -103,7 +103,7 @@ def run_ensemble(model, config, logger=None):
     df = np.concatenate(gather)
     predicted_label = np.argmax(df, 1)
     score = np.max(df, 1)
-    result_df = pd.DataFrame({"individual":model.train_ds.keys,"temporal_label_top1":predicted_label,"temporal_top1_score":score})
+    result_df = pd.DataFrame({"individual":model.val_ds.keys,"temporal_label_top1":predicted_label,"temporal_top1_score":score})
     
     return result_df
     

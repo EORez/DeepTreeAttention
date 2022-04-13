@@ -14,7 +14,7 @@ from distributed import wait
 
 client = start(cpus=100)
 
-def random_crop(index):  
+def random_crop(iteration):  
     config = read_config("config.yml")
     rgb_pool = glob.glob(config["rgb_sensor_pool"], recursive=True)
     rgb_pool = [x for x in rgb_pool if not "classified" in x]
@@ -47,30 +47,44 @@ def random_crop(index):
     selected_chm = [x for index, x in enumerate(chm_tiles) if index in chm_index]
     if not all(np.array([len(selected_chm), len(hsi_tifs), len(selected_rgb)]) == [3,3,3]):
         return None
-    #Get window
-    with rasterio.open(selected_rgb[0]) as src:        
-        # The size in pixels of your desired window
-        xsize, ysize = 640, 640
-        # Generate a random window location that doesn't go outside the image
-        xmin, xmax = 0, src.width - xsize
-        ymin, ymax = 0, src.height - ysize
-        xoff, yoff = random.randint(xmin, xmax), random.randint(ymin, ymax)
-        window = Window(xoff, yoff, xsize, ysize)
-        transform = src.window_transform(window)
+    #Get window, mask out black areas
+    non_black = False
+    while non_black:
+        with rasterio.open(selected_rgb[0]) as src:       
+            # The size in pixels of your desired window
+            xsize, ysize = 640, 640
+            # Generate a random window location that doesn't go outside the image
+            xmin, xmax = 0, src.width - xsize
+            ymin, ymax = 0, src.height - ysize
+            xoff, yoff = random.randint(xmin, xmax), random.randint(ymin, ymax)
+            window = Window(xoff, yoff, xsize, ysize)
+            test_window = src.read(1, window=window)
+            #Is black?
+            is_black = all(test_window == 0)
+            if not is_black:
+                non_black = True
+    transform = src.window_transform(window)
     bounds = rasterio.windows.bounds(window, transform)
+    
     #crop rgb
     for tile in selected_rgb:
-        crop(bounds=bounds, sensor_path= tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/RGB/", basename=os.path.splitext(os.path.basename(tile))[0])
-    
+        crop(bounds=bounds, sensor_path= tile,
+             savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/RGB/",
+             basename="{}_{}".format(os.path.splitext(os.path.basename(tile))[0],iteration))
+        
     for index, tile in enumerate(selected_chm):
-        crop(bounds=bounds, sensor_path= tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/CHM/", basename=os.path.splitext(os.path.basename(selected_rgb[index]))[0])
+        crop(bounds=bounds, sensor_path= tile,
+             savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/CHM/",
+             basename="{}_{}".format(os.path.splitext(os.path.basename(selected_rgb[index]))[0],iteration))
     #HSI
     for index, tile in enumerate(hsi_tifs):
-        crop(bounds=bounds, sensor_path=tile, savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/HSI/", basename=os.path.splitext(os.path.basename(selected_rgb[index]))[0])
+        crop(bounds=bounds, sensor_path=tile,
+             savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/HSI/",
+             basename="{}_{}".format(os.path.splitext(os.path.basename(selected_rgb[index]))[0],iteration))
 
 futures = []
-for x in range(100):
-    future = client.submit(random_crop, index=x)
+for x in range(300):
+    future = client.submit(random_crop, iteration=x)
     futures.append(future)
 
 wait(futures)

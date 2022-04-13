@@ -82,7 +82,7 @@ else:
 loss_weight = []
 for x in data_module.species_label_dict:
     loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
-    
+
 loss_weight = np.array(loss_weight/np.max(loss_weight))
 #Provide min value
 loss_weight[loss_weight < 0.5] = 0.5  
@@ -95,21 +95,18 @@ year_individuals = {}
 train_year_individuals = {}
 years = data_module.train.tile_year.unique()
 for x in years:
-    with comet_logger.experiment.context_manager(x):
-        
+    with comet_logger.experiment.context_manager(x): 
         #Set the dataloaders by year
         data_module.train_ds = data.TreeDataset(
             csv_file = "{}/train.csv".format(data_module.data_dir),
             config=data_module.config,
             year=x,
         )
-        
         data_module.val_ds = data.TreeDataset(
             csv_file = "{}/test.csv".format(data_module.data_dir),
             config=data_module.config,
             year=x
         )
-        
         year_model[x] = main.TreeModel(
             model=copy.deepcopy(model), 
             classes=data_module.num_classes, 
@@ -176,8 +173,8 @@ for x in years:
 
 results = pd.concat(year_results)
 #Train meta-learner        
-train_labels = [train_results[train_results.individual==x].label.values[0] for x in list(train_year_individuals.keys())]
-val_labels = [year_results[year_results.individual==x].label.values[0] for x in list(year_individuals.keys())]
+train_labels = [data_module.train[data_module.train.individualID==x].label.values[0] for x in list(train_year_individuals.keys())]
+val_labels = [data_module.test[data_module.test.individualID==x].label.values[0] for x in list(year_individuals.keys())]
 ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
                            train_labels=train_labels,
                            val_dict=year_individuals,

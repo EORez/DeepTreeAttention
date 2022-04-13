@@ -47,7 +47,7 @@ def random_crop(index):
     chm_index = [index for index, value in enumerate(chm_years) if value in selected_years]
     selected_chm = [x for index, x in enumerate(chm_tiles) if index in chm_index]
     
-    if not all(np.array([len(selected_chm), len(selected_hsi), len(selected_rgb)] == [3,3,3])):
+    if not all(np.array([len(selected_chm), len(selected_hsi), len(selected_rgb)]) == [3,3,3]):
         return None
     #Get window
     with rasterio.open(selected_rgb[0]) as src:        

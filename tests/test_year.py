@@ -35,5 +35,7 @@ def test_run_ensemble(m, config, dm):
                                config=config,
                                classes=len(results.label.unique()), years=2)    
     config["gpus"] = 0
-    predicted_label, score = year.run_ensemble(model, config)
+    yeardf = year.run_ensemble(model, config)
+    merged_df = results.merge(yeardf, on="individual")
+    assert merged_df.shape[0] == results.shape[0]
     

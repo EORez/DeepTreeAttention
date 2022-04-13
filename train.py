@@ -185,9 +185,8 @@ ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
                            classes=len(results.label.unique()),
                            years=3)
 
-predicted_label, score = year.run_ensemble(ensemble_model, config=config)
-results["temporal_label_top1"] = predicted_label
-results["temporal_top1_score"] = score
+yeardf = year.run_ensemble(ensemble_model, config=config, logger=comet_logger)
+results = results.merge(yeardf, on="individual")
 
 #Log prediction
 comet_logger.experiment.log_table("test_predictions.csv", results)

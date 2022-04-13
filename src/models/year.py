@@ -1,8 +1,10 @@
 from pytorch_lightning import LightningModule, Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 import numpy as np
+import pandas as pd
 
 class ensemble_dataset(Dataset):
     """Generate dataset for learning ensemble among years"""
@@ -55,6 +57,7 @@ class year_ensemble(LightningModule):
             self.train_ds,
             batch_size=self.config["batch_size"],
             num_workers=self.config["workers"],
+            shuffle=True
         )
         
         return data_loader
@@ -94,12 +97,13 @@ class year_ensemble(LightningModule):
     
 def run_ensemble(model, config, logger=None):
     """Train and predict an ensemble model"""
-    trainer = Trainer(gpus=config["gpus"], max_epochs=config["ensemble_epochs"], logger=logger)
+    trainer = Trainer(gpus=config["gpus"], max_epochs=config["ensemble_epochs"], logger=logger, checkpoint_callback=False)
     trainer.fit(model)
-    gather = trainer.predict(dataloaders=model.val_dataloader())
+    gather = trainer.predict(model, dataloaders=model.val_dataloader(), ckpt_path=None)
     df = np.concatenate(gather)
     predicted_label = np.argmax(df, 1)
     score = np.max(df, 1)
+    result_df = pd.DataFrame({"individual":model.train_ds.keys,"temporal_label_top1":predicted_label,"temporal_top1_score":score})
     
-    return predicted_label, score
+    return result_df
     

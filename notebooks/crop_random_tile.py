@@ -48,8 +48,8 @@ def random_crop(iteration):
     if not all(np.array([len(selected_chm), len(hsi_tifs), len(selected_rgb)]) == [3,3,3]):
         return None
     #Get window, mask out black areas
-    non_black = False
-    while non_black:
+    black_tile = True
+    while black_tile:
         with rasterio.open(selected_rgb[0]) as src:       
             # The size in pixels of your desired window
             xsize, ysize = 640, 640
@@ -60,9 +60,9 @@ def random_crop(iteration):
             window = Window(xoff, yoff, xsize, ysize)
             test_window = src.read(1, window=window)
             #Is black?
-            is_black = all(test_window == 0)
-            if not is_black:
-                non_black = True
+            is_black = test_window == 0
+            if not is_black.all():
+                black_tile = False
     transform = src.window_transform(window)
     bounds = rasterio.windows.bounds(window, transform)
     

@@ -185,7 +185,7 @@ ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
                            classes=len(results.label.unique()),
                            years=len(years))
 
-predicted_label, score = year.run_ensemble(ensemble_model)
+predicted_label, score = year.run_ensemble(ensemble_model, config=config)
 results["temporal_label_top1"] = predicted_label
 results["temporal_top1_score"] = score
 

@@ -195,18 +195,18 @@ temporal_only["pred_taxa_top1"] = temporal_only["temporal_label_top1"].apply(lam
 temporal_only["pred_label_top1"] = temporal_only["temporal_label_top1"]
 
 #Temporal function
-temporal_micro = torchmetrics.functional.accuracy(preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),target=torch.tensor(temporal_only.label.values), num_classes=data_module.num_classes,average="micro")
-temporal_macro = torchmetrics.functional.precision(preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),target=torch.tensor(temporal_only.label.values), num_classes=data_module.num_classes, average="macro")
+temporal_micro = torchmetrics.functional.accuracy(preds=torch.tensor(temporal_only.temporal_label_top1.values),target=torch.tensor(temporal_only.label.values), num_classes=data_module.num_classes,average="micro")
+temporal_macro = torchmetrics.functional.precision(preds=torch.tensor(temporal_only.temporal_label_top1.values),target=torch.tensor(temporal_only.label.values), num_classes=data_module.num_classes, average="macro")
 
 # Log results by species
 taxon_accuracy = torchmetrics.functional.accuracy(
-    preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),
+    preds=torch.tensor(temporal_only.temporal_label_top1.values),
     target=torch.tensor(temporal_only.label.values), 
     average="none", 
     num_classes=self.classes
 )
 taxon_precision = torchmetrics.functional.precision(
-    preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),
+    preds=torch.tensor(temporal_only.temporal_label_top1.values),
     target=torch.tensor(temporal_only.label.values),
     average="none",
     num_classes=self.classes

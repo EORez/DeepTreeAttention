@@ -15,7 +15,8 @@ class ensemble_dataset(Dataset):
         return len(list(self.data_dict.keys()))
     
     def __getitem__(self, index):
-        year_results = self.data_dict[self.keys[index]]
+        #Get last three years, long term we need an aggregator for variable length.
+        year_results = self.data_dict[self.keys[index]][:-3]
         year_stack = torch.tensor(np.concatenate(year_results))
         if not isinstance(type(self.labels), type(None)):
             label = torch.tensor(self.labels[index])

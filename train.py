@@ -183,7 +183,7 @@ ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
                            val_labels=results.label.values,
                            config=config,
                            classes=len(results.label.unique()),
-                           years=len(years))
+                           years=3)
 
 predicted_label, score = year.run_ensemble(ensemble_model, config=config)
 results["temporal_label_top1"] = predicted_label

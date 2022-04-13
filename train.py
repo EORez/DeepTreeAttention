@@ -178,9 +178,9 @@ results = pd.concat(year_results)
 
 #Train meta-learner        
 ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
-                           train_labels=train_results.label,
+                           train_labels=train_results.label.values,
                            val_dict=year_individuals,
-                           val_labels=results.label,
+                           val_labels=results.label.values,
                            config=config,
                            classes=len(results.label.unique()),
                            years=len(years))

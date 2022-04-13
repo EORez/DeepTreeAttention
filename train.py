@@ -175,12 +175,13 @@ for x in years:
         )
 
 results = pd.concat(year_results)
-
 #Train meta-learner        
+train_labels = [train_results[train_results.individuals==x].label.values[0] for x in list(train_year_individuals.keys())]
+val_labels = [year_results[year_results.individuals==x].label.values[0] for x in list(year_individuals.keys())]
 ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
-                           train_labels=train_results.label.values,
+                           train_labels=train_labels,
                            val_dict=year_individuals,
-                           val_labels=results.label.values,
+                           val_labels=val_labels,
                            config=config,
                            classes=len(results.label.unique()),
                            years=3)

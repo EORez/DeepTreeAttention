@@ -203,13 +203,13 @@ taxon_accuracy = torchmetrics.functional.accuracy(
     preds=torch.tensor(temporal_only.temporal_label_top1.values),
     target=torch.tensor(temporal_only.label.values), 
     average="none", 
-    num_classes=self.classes
+    num_classes=data_module.classes
 )
 taxon_precision = torchmetrics.functional.precision(
     preds=torch.tensor(temporal_only.temporal_label_top1.values),
     target=torch.tensor(temporal_only.label.values),
     average="none",
-    num_classes=self.classes
+    num_classes=data_module.classes
 )
 species_table = pd.DataFrame(
     {"taxonID":data_module.species_label_dict.keys(),

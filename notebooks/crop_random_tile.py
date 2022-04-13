@@ -8,6 +8,7 @@ from src.start_cluster import start
 import rasterio
 import random
 import re
+import numpy as np
 from rasterio.windows import Window
 from distributed import wait
 
@@ -16,6 +17,7 @@ client = start(cpus=100)
 def random_crop(index):  
     config = read_config("config.yml")
     rgb_pool = glob.glob(config["rgb_sensor_pool"], recursive=True)
+    rgb_pool = [x for x in rgb_pool if not "classified" in x]
     hsi_pool = glob.glob(config["HSI_sensor_pool"], recursive=True)
     CHM_pool = glob.glob(config["CHM_pool"], recursive=True)
     
@@ -44,7 +46,9 @@ def random_crop(index):
     selected_hsi = [x for index, x in enumerate(hsi_tiles) if index in hsi_index]
     chm_index = [index for index, value in enumerate(chm_years) if value in selected_years]
     selected_chm = [x for index, x in enumerate(chm_tiles) if index in chm_index]
-        
+    
+    if not all(np.array([len(selected_chm), len(selected_hsi), len(selected_rgb)] == [3,3,3])):
+        return None
     #Get window
     with rasterio.open(selected_rgb[0]) as src:        
         # The size in pixels of your desired window

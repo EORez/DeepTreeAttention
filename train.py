@@ -201,6 +201,28 @@ temporal_only["pred_label_top1"] = temporal_only["temporal_label_top1"]
 temporal_micro = torchmetrics.functional.accuracy(preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),target=torch.tensor(temporal_only.label.values), num_classes=data_module.num_classes,average="micro")
 temporal_macro = torchmetrics.functional.precision(preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),target=torch.tensor(temporal_only.label.values), num_classes=data_module.num_classes, average="macro")
 
+# Log results by species
+taxon_accuracy = torchmetrics.functional.accuracy(
+    preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),
+    target=torch.tensor(temporal_only.label.values), 
+    average="none", 
+    num_classes=self.classes
+)
+taxon_precision = torchmetrics.functional.precision(
+    preds=torch.tensor(temporal_only.temporal_pred_label_top1.values),
+    target=torch.tensor(temporal_only.label.values),
+    average="none",
+    num_classes=self.classes
+)
+species_table = pd.DataFrame(
+    {"taxonID":data_module.species_label_dict.keys(),
+     "accuracy":taxon_accuracy,
+     "precision":taxon_precision
+     })
+
+comet_logger.experiment.log_metrics(species_table.set_index("taxonID").accuracy.to_dict(),prefix="accuracy")
+comet_logger.experiment.log_metrics(species_table.set_index("taxonID").precision.to_dict(),prefix="precision")
+    
 comet_logger.experiment.log_metric("temporal_micro",temporal_micro)
 comet_logger.experiment.log_metric("temporal_macro",temporal_macro)
 

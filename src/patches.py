@@ -11,7 +11,7 @@ def crop(bounds, sensor_path, savedir = None, basename = None):
     width = (right - left)/res      
     if savedir:
         filename = "{}/{}.tif".format(savedir, basename)
-        with rasterio.open(filename, "w", driver="GTiff",height=height, width=width, count = img.shape[0], dtype=img.dtype, crs=src.crs) as dst:
+        with rasterio.open(filename, "w", driver="GTiff",height=height, width=width, count = img.shape[0], dtype=img.dtype) as dst:
             dst.write(img)
     if savedir:
         return filename

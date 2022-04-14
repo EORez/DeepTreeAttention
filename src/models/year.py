@@ -22,7 +22,7 @@ class ensemble_dataset(Dataset):
             year_results = self.data_dict[self.keys[index]][-3:]
         except:
             "Cannot gen data of size {} with elements {}".format(len(self.data_dict[self.keys[index]]), self.data_dict[self.keys[index]])
-        year_stack = torch.tensor(np.vstack(year_results))
+        year_stack = torch.tensor(np.concatenate(year_results))
         if not isinstance(type(self.labels), type(None)):
             label = torch.tensor(self.labels[index])
             return year_stack, label
@@ -35,15 +35,10 @@ class year_ensemble(LightningModule):
         self.config = config
         self.train_ds = ensemble_dataset(train_dict,labels=train_labels)
         self.val_ds = ensemble_dataset(val_dict,labels=val_labels)
-        self.fc1 = torch.nn.Linear(in_features=classes * years, out_features=classes* 2)
-        self.fc2 = torch.nn.Linear(in_features=classes * 2, out_features=classes)
-        self.identity = torch.nn.Identity()
+        self.fc1 = torch.nn.Linear(in_features=classes*years, out_features=classes)
         
     def forward(self,x):
-        x = x.mean(axis=1)
-        #x = F.relu(x)
-        #x = self.fc2(x)
-        #x = F.relu(x)
+        x = self.fc1(x)
         
         return x
     
@@ -99,7 +94,7 @@ class year_ensemble(LightningModule):
 def run_ensemble(model, config, logger=None):
     """Train and predict an ensemble model"""
     trainer = Trainer(gpus=config["gpus"], max_epochs=config["ensemble_epochs"], logger=logger, checkpoint_callback=False)
-    #trainer.fit(model)
+    trainer.fit(model)
     gather = trainer.predict(model, dataloaders=model.val_dataloader(), ckpt_path=None)
     df = np.concatenate(gather)
     predicted_label = np.argmax(df, 1)

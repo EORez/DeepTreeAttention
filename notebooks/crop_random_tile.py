@@ -18,6 +18,9 @@ def crop(bounds, sensor_path, savedir = None, basename = None):
     left, bottom, right, top = bounds 
     src = rasterio.open(sensor_path)        
     img = src.read(window=rasterio.windows.from_bounds(left, bottom, right, top, transform=src.transform)) 
+    is_black = img == 0
+    if is_black.all():
+        raise ValueError("The image {} at bounds {} is black".format(sensor_path, bounds))
     res = src.res[0]
     height = (top - bottom)/res
     width = (right - left)/res      
@@ -39,10 +42,15 @@ def random_crop(iteration):
     hsi_pool = glob.glob(config["HSI_sensor_pool"], recursive=True)
     CHM_pool = glob.glob(config["CHM_pool"], recursive=True)
     #Choose random tile
-    selected_rgb = random.choice(rgb_pool)
-    geo_index = re.search("(\d+_\d+)_image", os.path.basename(selected_rgb)).group(1)
+    geo_index = re.search("(\d+_\d+)_image", os.path.basename(random.choice(rgb_pool))).group(1)
     rgb_tiles = [x for x in rgb_pool if geo_index in x]
+    if len(rgb_tiles) < 3:
+        return None
     chm_tiles = [x for x in CHM_pool if geo_index in x]
+    if len(chm_tiles) < 3:
+        return None    
+    if len([x for x in hsi_pool if geo_index in x]) < 3:
+        return None
     #Get .tif from the .h5
     hsi_tifs = neon_paths.lookup_and_convert(rgb_pool=rgb_pool, hyperspectral_pool=hsi_pool, savedir=config["HSI_tif_dir"], geo_index=geo_index, all_years=True)           
     hsi_tifs = [x for x in hsi_tifs if not "neon-aop-products" in x]
@@ -56,6 +64,7 @@ def random_crop(iteration):
     selected_years.sort()
     selected_years = selected_years[-3:]
     if len(selected_years) < 3:
+        print("not enough years")
         return None
     rgb_index = [index for index, value in enumerate(rgb_years) if value in selected_years]
     selected_rgb = [x for index, x in enumerate(rgb_tiles) if index in rgb_index]
@@ -64,24 +73,18 @@ def random_crop(iteration):
     chm_index = [index for index, value in enumerate(chm_years) if value in selected_years]
     selected_chm = [x for index, x in enumerate(chm_tiles) if index in chm_index]
     if not all(np.array([len(selected_chm), len(hsi_tifs), len(selected_rgb)]) == [3,3,3]):
+        print("Not enough years")
         return None
     #Get window, mask out black areas
-    with rasterio.open(selected_rgb[0]) as src:       
-        # The size in pixels of your desired window
-        xsize, ysize = 640, 640
-        # Generate a random window location that doesn't go outside the image
-        xmin, xmax = 0, src.width - xsize
-        ymin, ymax = 0, src.height - ysize
-        xoff, yoff = random.randint(xmin, xmax), random.randint(ymin, ymax)
-        window = Window(xoff, yoff, xsize, ysize)
-        test_window = src.read(window=window)
-        #Is black?
-        is_black = test_window == 0
-        if is_black.all():
-            return None
-        transform = src.window_transform(window)
-        bounds = rasterio.windows.bounds(window, transform)
-    
+    src = rasterio.open(selected_rgb[0])   
+    mask = src.read_masks(1)
+    coordx = np.argwhere(mask==255)
+    #Get random coordiante
+    xsize, ysize = 640, 640
+    random_index = random.randint(0, coordx.shape[0])
+    xmin, ymin = coordx[random_index,:]
+    window = Window(xmin, ymin, xsize, ysize)
+    bounds = rasterio.windows.bounds(window, src.transform)
     #crop rgb
     for tile in selected_rgb:
         crop(bounds=bounds, sensor_path= tile,

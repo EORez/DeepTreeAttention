@@ -41,7 +41,6 @@ class year_ensemble(LightningModule):
         
     def forward(self,x):
         x = x.mean(axis=1)
-        x = self.identity(x)
         #x = F.relu(x)
         #x = self.fc2(x)
         #x = F.relu(x)
@@ -100,7 +99,7 @@ class year_ensemble(LightningModule):
 def run_ensemble(model, config, logger=None):
     """Train and predict an ensemble model"""
     trainer = Trainer(gpus=config["gpus"], max_epochs=config["ensemble_epochs"], logger=logger, checkpoint_callback=False)
-    trainer.fit(model)
+    #trainer.fit(model)
     gather = trainer.predict(model, dataloaders=model.val_dataloader(), ckpt_path=None)
     df = np.concatenate(gather)
     predicted_label = np.argmax(df, 1)

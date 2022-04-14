@@ -10,17 +10,14 @@ import re
 import numpy as np
 from rasterio.windows import Window
 from distributed import wait
+import pandas as pd
 
-client = start(cpus=100)
-
+client = start(cpus=200, mem_size = "20GB")
 def crop(bounds, sensor_path, savedir = None, basename = None):
     """Given a 4 pointed bounding box, crop sensor data"""
     left, bottom, right, top = bounds 
     src = rasterio.open(sensor_path)        
     img = src.read(window=rasterio.windows.from_bounds(left, bottom, right, top, transform=src.transform)) 
-    is_black = img == 0
-    if is_black.all():
-        raise ValueError("The image {} at bounds {} is black".format(sensor_path, bounds))
     res = src.res[0]
     height = (top - bottom)/res
     width = (right - left)/res      
@@ -35,12 +32,7 @@ def crop(bounds, sensor_path, savedir = None, basename = None):
     else:
         return img 
     
-def random_crop(iteration):  
-    config = read_config("config.yml")
-    rgb_pool = glob.glob(config["rgb_sensor_pool"], recursive=True)
-    rgb_pool = [x for x in rgb_pool if not "classified" in x]
-    hsi_pool = glob.glob(config["HSI_sensor_pool"], recursive=True)
-    CHM_pool = glob.glob(config["CHM_pool"], recursive=True)
+def random_crop(rgb_pool, hsi_pool, CHM_pool, config, iteration):  
     #Choose random tile
     geo_index = re.search("(\d+_\d+)_image", os.path.basename(random.choice(rgb_pool))).group(1)
     rgb_tiles = [x for x in rgb_pool if geo_index in x]
@@ -101,9 +93,23 @@ def random_crop(iteration):
              savedir="/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/HSI/",
              basename="{}_{}".format(os.path.splitext(os.path.basename(selected_rgb[index]))[0],iteration))
 
+config = read_config("config.yml")    
+rgb_pool = glob.glob(config["rgb_sensor_pool"], recursive=True)
+rgb_pool = [x for x in rgb_pool if not "classified" in x]
+hsi_pool = glob.glob(config["HSI_sensor_pool"], recursive=True)
+CHM_pool = glob.glob(config["CHM_pool"], recursive=True)
 futures = []
 for x in range(300):
-    future = client.submit(random_crop, iteration=x)
+    future = client.submit(random_crop, rgb_pool=rgb_pool, hsi_pool=hsi_pool, CHM_pool=CHM_pool, config=config, iteration=x)
     futures.append(future)
 
 wait(futures)
+
+# post process cleanup
+
+files = glob.glob("/blue/ewhite/b.weinstein/DeepTreeAttention/selfsupervised/**/*.tif",recursive=True)
+counts = pd.DataFrame({"basename":[os.path.basename(x) for x in files],"path":files}) 
+less_than_3 = counts.basename.value_counts()
+to_remove = less_than_3[less_than_3 < 3].index
+for x in counts[counts.basename.isin(to_remove)].path:
+    os.remove(x)

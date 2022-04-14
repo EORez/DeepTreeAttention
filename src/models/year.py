@@ -22,7 +22,7 @@ class ensemble_dataset(Dataset):
             year_results = self.data_dict[self.keys[index]][-3:]
         except:
             "Cannot gen data of size {} with elements {}".format(len(self.data_dict[self.keys[index]]), self.data_dict[self.keys[index]])
-        year_stack = torch.tensor(np.concatenate(year_results))
+        year_stack = torch.tensor(np.vstack(year_results))
         if not isinstance(type(self.labels), type(None)):
             label = torch.tensor(self.labels[index])
             return year_stack, label
@@ -35,9 +35,10 @@ class year_ensemble(LightningModule):
         self.config = config
         self.train_ds = ensemble_dataset(train_dict,labels=train_labels)
         self.val_ds = ensemble_dataset(val_dict,labels=val_labels)
-        self.fc1 = torch.nn.Linear(in_features=classes*years, out_features=classes)
+        self.fc1 = torch.nn.Linear(in_features=classes, out_features=classes)
         
     def forward(self,x):
+        x = x.sum(axis=1)
         x = self.fc1(x)
         
         return x

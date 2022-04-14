@@ -37,9 +37,11 @@ class year_ensemble(LightningModule):
         self.val_ds = ensemble_dataset(val_dict,labels=val_labels)
         self.fc1 = torch.nn.Linear(in_features=classes * years, out_features=classes* 2)
         self.fc2 = torch.nn.Linear(in_features=classes * 2, out_features=classes)
+        self.identity = torch.nn.Identity()
         
     def forward(self,x):
         x = x.mean(axis=1)
+        x = self.identity(x)
         #x = F.relu(x)
         #x = self.fc2(x)
         #x = F.relu(x)

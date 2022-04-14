@@ -39,7 +39,7 @@ class year_ensemble(LightningModule):
         
     def forward(self,x):
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.sigmoid(x)
         
         return x
     

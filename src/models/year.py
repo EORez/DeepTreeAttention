@@ -35,7 +35,7 @@ class year_ensemble(LightningModule):
         self.config = config
         self.train_ds = ensemble_dataset(train_dict,labels=train_labels)
         self.val_ds = ensemble_dataset(val_dict,labels=val_labels)
-        self.fc1 = torch.nn.Linear(in_features=classes, out_features=classes)
+        self.fc1 = torch.nn.Linear(in_features=classes*years, out_features=classes)
         
     def forward(self,x):
         x = self.fc1(x)

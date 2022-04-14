@@ -88,9 +88,8 @@ class year_ensemble(LightningModule):
     def predict_step(self, batch, batch_idx):
         x,y = batch
         y_hat = self(x)
-        scores = F.softmax(y_hat, dim=1)
         
-        return scores 
+        return y_hat 
     
 def run_ensemble(model, config, logger=None, savedir=None):
     """Train and predict an ensemble model"""

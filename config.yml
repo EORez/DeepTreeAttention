@@ -62,7 +62,7 @@ top_k: 4
 plot_n_individuals: 100
 
 #Ensemble
-ensemble_epochs: 100
+ensemble_epochs: 500
 
 #Predict
 predict_batch_size: 1024

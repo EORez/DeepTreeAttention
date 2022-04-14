@@ -92,10 +92,12 @@ class year_ensemble(LightningModule):
         
         return scores 
     
-def run_ensemble(model, config, logger=None):
+def run_ensemble(model, config, logger=None, savedir=None):
     """Train and predict an ensemble model"""
     trainer = Trainer(gpus=config["gpus"], max_epochs=config["ensemble_epochs"], logger=logger, checkpoint_callback=False)
     trainer.fit(model)
+    if savedir:
+        trainer.save_checkpoint(filepath="{}/ensemble.pl".format(savedir))
     gather = trainer.predict(model, dataloaders=model.val_dataloader(), ckpt_path=None)
     df = np.concatenate(gather)
     predicted_label = np.argmax(df, 1)

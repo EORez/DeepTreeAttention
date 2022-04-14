@@ -183,7 +183,7 @@ ensemble_model = year.year_ensemble(train_dict=train_year_individuals,
                            classes=len(results.label.unique()),
                            years=3)
 
-yeardf = year.run_ensemble(ensemble_model, config=config, logger=comet_logger)
+yeardf = year.run_ensemble(ensemble_model, config=config, logger=comet_logger, savedir=model_dir)
 results = results.merge(yeardf, on="individual")
 
 #Log prediction

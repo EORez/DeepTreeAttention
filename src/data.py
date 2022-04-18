@@ -218,8 +218,9 @@ class TreeDataset(Dataset):
        csv_file: path to csv file with image_path and label
        taxonIDs: list of taxonIDs in annotations to retain
        keep_others (logical): If True, convert all taxon not in taxonIDs to 'Other'
+       sampling_ceiling (int): Number of samples per class to sample
     """
-    def __init__(self, csv_file, config=None, train=True, taxonIDs, keep_others=False):
+    def __init__(self, csv_file, config=None, train=True, taxonIDs=None, keep_others=False, sampling_ceiling=None):
         self.annotations = pd.read_csv(csv_file)
         
         #Filter taxa 
@@ -257,21 +258,19 @@ class TreeDataset(Dataset):
         inputs = {}
         image_path = self.annotations.image_path.loc[index]      
         individual = os.path.basename(image_path.split(".tif")[0])
-        if self.HSI:
-            if self.config["preload_images"]:
-                inputs["HSI"] = self.image_dict[index]
-            else:
-                image_basename = self.annotations.image_path.loc[index]  
-                image_path = os.path.join(self.config["crop_dir"],image_basename)                
-                image = load_image(image_path, image_size=self.image_size)
-                inputs["HSI"] = image
+        if self.config["preload_images"]:
+            inputs["HSI"] = self.image_dict[index]
+        else:
+            image_basename = self.annotations.image_path.loc[index]  
+            image_path = os.path.join(self.config["crop_dir"],image_basename)                
+            image = load_image(image_path, image_size=self.image_size)
+            inputs["HSI"] = image
 
         if self.train:
             label = self.annotations.label.loc[index]
             label = torch.tensor(label, dtype=torch.long)
 
-            if self.HSI:
-                inputs["HSI"] = self.transformer(inputs["HSI"])
+            inputs["HSI"] = self.transformer(inputs["HSI"])
 
             return individual, inputs, label
         else:

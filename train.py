@@ -76,7 +76,6 @@ else:
 m = main.TreeModel(
     model=model, 
     classes=data_module.num_classes, 
-    loss_weight=loss_weight,
     label_dict=data_module.species_label_dict)
 
 #Create trainer
@@ -116,7 +115,6 @@ else:
 m2 = main.TreeModel(
     model=model, 
     classes=data_module.num_classes, 
-    loss_weight=loss_weight,
     label_dict=data_module.species_label_dict)
 
 #Create trainer

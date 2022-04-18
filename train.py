@@ -43,7 +43,6 @@ comet_logger.experiment.log_parameter("git branch",git_branch)
 comet_logger.experiment.add_tag(git_branch)
 comet_logger.experiment.log_parameter("commit hash",git_commit)
 comet_logger.experiment.log_parameters(config)
-rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 
 data_module = data.TreeData(
     csv_file="data/raw/neon_vst_data_2022.csv",
@@ -53,6 +52,8 @@ data_module = data.TreeData(
     comet_logger=comet_logger)
 
 data_module.setup()
+rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
+
 original_label_dict = data_module.species_label_dict.copy()
 if client:
     client.close()
@@ -175,11 +176,10 @@ with comet_logger.experiment.context_manager("all_but_PIPA"):
 
 #Get joint scores
 original_label_dict["OTHER"] = len(original_label_dict) + 1
+results = results[results.taxonID=="PIPA2"]
 joint_results = pd.concat([results, results2])
-joint_results = joint_results[(joint_results.pred_taxa_top1 =="OTHER") & (joint_results.taxonID == "OTHER")]
 joint_results["joint_results.pred_label_top1"] = [original_label_dict[x] for x in joint_results.pred_taxa_top1]
 
-data_module.test[~(data_module.test.individualID.isin(joint_results.individualID))]
 final_micro = torchmetrics.functional.accuracy(
     preds=torch.tensor(joint_results.pred_label_top1.values),
     target=torch.tensor(joint_results.label.values),
@@ -189,7 +189,7 @@ final_macro = torchmetrics.functional.accuracy(
     preds=torch.tensor(joint_results.pred_label_top1.values),
     target=torch.tensor(joint_results.label.values),
     average="macro",
-    num_classes=data_module.num_classes)
+    num_classes=data_module.num_classes+1)
 
 comet_logger.experiment.log_metric("OSBS_micro",final_micro)
 comet_logger.experiment.log_metric("OSBS_macro",final_macro)
@@ -199,13 +199,13 @@ taxon_accuracy = torchmetrics.functional.accuracy(
     preds=torch.tensor(results.pred_label_top1.values),
     target=torch.tensor(results.label.values), 
     average="none", 
-    num_classes=data_module.classes
+    num_classes=data_module.num_classes
 )
 taxon_precision = torchmetrics.functional.precision(
     preds=torch.tensor(joint_results.pred_label_top1.values),
     target=torch.tensor(joint_results.label.values),
     average="none",
-    num_classes=data_module.classes
+    num_classes=data_module.num_classes
 )
 species_table = pd.DataFrame(
     {"taxonID":list(data_module.species_label_dict.keys()),

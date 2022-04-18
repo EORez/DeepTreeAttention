@@ -12,6 +12,7 @@ from src import visualize
 from src import metrics
 import sys
 import torchmetrics
+import torch
 
 from pytorch_lightning import Trainer
 import subprocess
@@ -42,6 +43,7 @@ comet_logger.experiment.log_parameter("git branch",git_branch)
 comet_logger.experiment.add_tag(git_branch)
 comet_logger.experiment.log_parameter("commit hash",git_commit)
 comet_logger.experiment.log_parameters(config)
+rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 
 data_module = data.TreeData(
     csv_file="data/raw/neon_vst_data_2022.csv",
@@ -76,7 +78,7 @@ if config["pretrain_state_dict"]:
     model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=2, bands=config["bands"])
 else:
     model = Hang2020.spectral_network(bands=config["bands"], classes=2)
-    
+
 #Load from state dict of previous run
 m = main.TreeModel(
     model=model, 
@@ -89,42 +91,54 @@ lr_monitor = LearningRateMonitor(logging_interval='epoch')
 trainer = Trainer(
     gpus=data_module.config["gpus"],
     fast_dev_run=data_module.config["fast_dev_run"],
-    max_epochs=data_module.config["epochs"],
+    max_epochs=data_module.config["epochs_model1"],
     accelerator=data_module.config["accelerator"],
     checkpoint_callback=False,
     callbacks=[lr_monitor],
     logger=comet_logger)
 
-trainer.fit(m, datamodule=data_module)
+with comet_logger.experiment.context_manager("PIPA2"):
+    trainer.fit(m, datamodule=data_module)
 
-#Save model checkpoint
-trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
-results = m.evaluate_crowns(
-    data_module.val_dataloader(),
-    crowns = data_module.crowns,
-    experiment=comet_logger.experiment,
-)
+    #Save model checkpoint
+    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
+    results = m.evaluate_crowns(
+        data_module.val_dataloader(),
+        crowns = data_module.crowns,
+        experiment=comet_logger.experiment,
+    )
+    
+    visualize.confusion_matrix(
+        comet_experiment=comet_logger.experiment,
+        results=results,
+        species_label_dict=data_module.species_label_dict,
+        test_crowns=data_module.crowns,
+        test=data_module.test,
+        test_points=data_module.canopy_points,
+        rgb_pool=rgb_pool
+    )
 
 ## MODEL 2 ##
-all_but_PIPA = [x for x in list(data_module.species_label_dict.keys()) if x == "PIPA2"]
+
+all_but_PIPA = [x for x in list(original_label_dict.keys()) if not x == "PIPA2"]
 
 #Create a list of dataloaders to traind
 data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = all_but_PIPA, config=config)
 data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = all_but_PIPA, config=config)
-data_module.species_label_dict = {k:v for k, v in enumerate(all_but_PIPA)}
+data_module.species_label_dict = {v:k for k, v in enumerate(all_but_PIPA)}
 data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
 #Load from state dict of previous run
 if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=data_module.num_classes - 1, bands=config["bands"])
+    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(all_but_PIPA), bands=config["bands"])
 else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=data_module.num_classes - 1)
+    model = Hang2020.spectral_network(bands=config["bands"], classes=len(all_but_PIPA))
     
 #Load from state dict of previous run
 m2 = main.TreeModel(
     model=model, 
-    loss_weight=[1 for x in range(data_module.num_classes-1)],
-    classes=data_module.num_classes-1,
+    loss_weight=[1 for x in range(len(all_but_PIPA))],
+    classes=len(all_but_PIPA),
     label_dict=data_module.species_label_dict)
 
 #Create trainer
@@ -132,27 +146,40 @@ lr_monitor = LearningRateMonitor(logging_interval='epoch')
 trainer = Trainer(
     gpus=data_module.config["gpus"],
     fast_dev_run=data_module.config["fast_dev_run"],
-    max_epochs=data_module.config["epochs"],
+    max_epochs=data_module.config["epochs_model2"],
     accelerator=data_module.config["accelerator"],
     checkpoint_callback=False,
     callbacks=[lr_monitor],
     logger=comet_logger)
 
-trainer.fit(m2, datamodule=data_module)
+with comet_logger.experiment.context_manager("all_but_PIPA"):
+    trainer.fit(m2, datamodule=data_module)
 
-#Save model checkpoint
-trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_PIPA.pl".format(comet_logger.experiment.id))
-results2 = m2.evaluate_crowns(
-    data_module.val_dataloader(),
-    crowns = data_module.crowns,
-    experiment=comet_logger.experiment,
-)
+    #Save model checkpoint
+    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_PIPA.pl".format(comet_logger.experiment.id))
+    results2 = m2.evaluate_crowns(
+        data_module.val_dataloader(),
+        crowns = data_module.crowns,
+        experiment=comet_logger.experiment,
+    )
+    
+    visualize.confusion_matrix(
+        comet_experiment=comet_logger.experiment,
+        results=results,
+        species_label_dict=data_module.species_label_dict,
+        test_crowns=data_module.crowns,
+        test=data_module.test,
+        test_points=data_module.canopy_points,
+        rgb_pool=rgb_pool
+    )    
 
 #Get joint scores
+original_label_dict["OTHER"] = len(original_label_dict) + 1
 joint_results = pd.concat([results, results2])
-joint_results = joint_results[~(joint_results.taxonID=="OTHER")]
-joint_results["joint_results.pred_label_top1"] = [original_label_dict[x] for x in joint_results.pred_label_taxa]
+joint_results = joint_results[(joint_results.pred_taxa_top1 =="OTHER") & (joint_results.taxonID == "OTHER")]
+joint_results["joint_results.pred_label_top1"] = [original_label_dict[x] for x in joint_results.pred_taxa_top1]
 
+data_module.test[~(data_module.test.individualID.isin(joint_results.individualID))]
 final_micro = torchmetrics.functional.accuracy(
     preds=torch.tensor(joint_results.pred_label_top1.values),
     target=torch.tensor(joint_results.label.values),
@@ -181,7 +208,7 @@ taxon_precision = torchmetrics.functional.precision(
     num_classes=data_module.classes
 )
 species_table = pd.DataFrame(
-    {"taxonID":data_module.keys(),
+    {"taxonID":list(data_module.species_label_dict.keys()),
      "accuracy":taxon_accuracy,
      "precision":taxon_precision
      })
@@ -190,7 +217,6 @@ for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
     comet_logger.experiment.log_metric("{}_accuracy".format(key), value)
 
 #Visualizations
-rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 visualize.plot_spectra(results, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
 visualize.rgb_plots(
     df=results,

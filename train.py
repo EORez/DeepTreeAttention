@@ -63,8 +63,8 @@ if not config["use_data_commit"]:
 
 ## Model 1 ##
 #Create a list of dataloaders to traind
-PIPA_v_all_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = ["PIPA2"], keep_others = True)
-PIPA_v_all_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True)
+PIPA_v_all_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
+PIPA_v_all_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
 
 #Load from state dict of previous run
 if config["pretrain_state_dict"]:
@@ -103,8 +103,8 @@ results = m.evaluate_crowns(
 ## MODEL 2 ##
 all_but_PIPA = [x for x in list(data_module.species_label_dict.keys()) if x == "PIPA2"]
 #Create a list of dataloaders to traind
-all_but_PIPA_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = all_but_PIPA)
-all_but_PIPA_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = all_but_PIPA)
+all_but_PIPA_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = all_but_PIPA, config=config)
+all_but_PIPA_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = all_but_PIPA, config=config)
 
 #Load from state dict of previous run
 if config["pretrain_state_dict"]:

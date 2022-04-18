@@ -216,12 +216,26 @@ class TreeDataset(Dataset):
     """A csv file with a path to image crop and label
     Args:
        csv_file: path to csv file with image_path and label
+       taxonIDs: list of taxonIDs in annotations to retain
+       keep_others (logical): If True, convert all taxon not in taxonIDs to 'Other'
     """
-    def __init__(self, csv_file, config=None, train=True, HSI=True, metadata=False):
+    def __init__(self, csv_file, config=None, train=True, taxonIDs, keep_others=False):
         self.annotations = pd.read_csv(csv_file)
+        
+        #Filter taxa 
+        if isinstance(taxonIDs, type(list)):
+            taxon_to_keep = self.annotations[self.annotations.taxonID.isin(taxonIDs)]
+            if keep_others:
+                others = self.annotations[~(self.annotations.taxonID.isin(taxonIDs))]
+                others.taxonID = "OTHER"
+                self.annotations = pd.concat([taxon_to_keep, others])
+            else:
+                self.annotations = taxon_to_keep
+        
+        if sampling_ceiling:
+            self.annotations = self.annotations.groupby("taxonID").apply(lambda x: x.head(sampling_ceiling)).reset_index(drop=True)
+        
         self.train = train
-        self.HSI = HSI
-        self.metadata = metadata
         self.config = config         
         self.image_size = config["image_size"]
 
@@ -252,11 +266,6 @@ class TreeDataset(Dataset):
                 image = load_image(image_path, image_size=self.image_size)
                 inputs["HSI"] = image
 
-        if self.metadata:
-            site = self.annotations.site.loc[index]  
-            site = torch.tensor(site, dtype=torch.int)
-            inputs["site"] = site
-
         if self.train:
             label = self.annotations.label.loc[index]
             label = torch.tensor(label, dtype=torch.long)
@@ -284,7 +293,7 @@ class TreeData(LightningDataModule):
     The module checkpoints the different phases of setup, if one stage failed it will restart from that stage. 
     Use regenerate=True to override this behavior in setup()
     """
-    def __init__(self, csv_file, config, HSI=True, metadata=False, client = None, data_dir=None, comet_logger=None, debug=False):
+    def __init__(self, csv_file, config, client = None, data_dir=None, comet_logger=None, debug=False):
         """
         Args:
             config: optional config file to override
@@ -295,8 +304,6 @@ class TreeData(LightningDataModule):
         super().__init__()
         self.ROOT = os.path.dirname(os.path.dirname(__file__))
         self.csv_file = csv_file
-        self.HSI = HSI
-        self.metadata = metadata
         self.comet_logger = comet_logger
         self.debug = debug 
 
@@ -478,16 +485,12 @@ class TreeData(LightningDataModule):
             #Create dataloaders
             self.train_ds = TreeDataset(
                 csv_file = "{}/train.csv".format(self.data_dir),
-                config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
+                config=self.config
             )
             
             self.val_ds = TreeDataset(
                 csv_file = "{}/test.csv".format(self.data_dir),
-                config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
+                config=self.config
             )
              
         else:
@@ -525,16 +528,12 @@ class TreeData(LightningDataModule):
             #Create dataloaders
             self.train_ds = TreeDataset(
                 csv_file = "{}/train.csv".format(self.data_dir),
-                config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
+                config=self.config
             )
     
             self.val_ds = TreeDataset(
                 csv_file = "{}/test.csv".format(self.data_dir),
-                config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
+                config=self.config
             )            
 
     def train_dataloader(self):

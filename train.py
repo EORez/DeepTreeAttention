@@ -62,26 +62,18 @@ comet_logger.experiment.log_table("test.csv", data_module.test)
 if not config["use_data_commit"]:
     comet_logger.experiment.log_table("novel_species.csv", data_module.novel)
 
+## Model 1 ##
+#Create a list of dataloaders to traind
+PIPA_v_all_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = ["PIPA2"], keep_others = True)
+PIPA_v_all_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True)
 
 #Load from state dict of previous run
 if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=data_module.num_classes, bands=config["bands"])
+    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=2, bands=config["bands"])
 else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=data_module.num_classes)
+    model = Hang2020.spectral_network(bands=config["bands"], classes=2)
     
 #Load from state dict of previous run
-
-#Loss weight, balanced
-loss_weight = []
-for x in data_module.species_label_dict:
-    loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
-    
-loss_weight = np.array(loss_weight/np.max(loss_weight))
-#Provide min value
-loss_weight[loss_weight < 0.5] = 0.5  
-
-comet_logger.experiment.log_parameter("loss_weight", loss_weight)
-
 m = main.TreeModel(
     model=model, 
     classes=data_module.num_classes, 
@@ -99,17 +91,19 @@ trainer = Trainer(
     callbacks=[lr_monitor],
     logger=comet_logger)
 
-trainer.fit(m, datamodule=data_module)
+trainer.fit(m, train_dataloader=PIPA_v_all_train, val_dataloaders=PIPA_v_all_test)
+
 #Save model checkpoint
-trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
+trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
 results = m.evaluate_crowns(
-    data_module.val_dataloader(),
+    PIPA_v_all_test,
     crowns = data_module.crowns,
     experiment=comet_logger.experiment,
 )
-rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
+
 
 #Visualizations
+rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 visualize.plot_spectra(results, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
 visualize.rgb_plots(
     df=results,

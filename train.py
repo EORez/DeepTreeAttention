@@ -11,6 +11,8 @@ from src.models import Hang2020
 from src import visualize
 from src import metrics
 import sys
+import torchmetrics
+
 from pytorch_lightning import Trainer
 import subprocess
 from pytorch_lightning.loggers import CometLogger
@@ -49,6 +51,7 @@ data_module = data.TreeData(
     comet_logger=comet_logger)
 
 data_module.setup()
+original_label_dict = data_module.species_label_dict.copy()
 if client:
     client.close()
 
@@ -140,11 +143,52 @@ trainer.fit(m2, datamodule=data_module)
 
 #Save model checkpoint
 trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_PIPA.pl".format(comet_logger.experiment.id))
-results = m2.evaluate_crowns(
+results2 = m2.evaluate_crowns(
     data_module.val_dataloader(),
     crowns = data_module.crowns,
     experiment=comet_logger.experiment,
 )
+
+#Get joint scores
+joint_results = pd.concat([results, results2])
+joint_results = joint_results[~(joint_results.taxonID=="OTHER")]
+joint_results["joint_results.pred_label_top1"] = [original_label_dict[x] for x in joint_results.pred_label_taxa]
+
+final_micro = torchmetrics.functional.accuracy(
+    preds=torch.tensor(joint_results.pred_label_top1.values),
+    target=torch.tensor(joint_results.label.values),
+    average="micro")
+
+final_macro = torchmetrics.functional.accuracy(
+    preds=torch.tensor(joint_results.pred_label_top1.values),
+    target=torch.tensor(joint_results.label.values),
+    average="macro",
+    num_classes=data_module.num_classes)
+
+comet_logger.experiment.log_metric("OSBS_micro",final_micro)
+comet_logger.experiment.log_metric("OSBS_macro",final_macro)
+
+# Log results by species
+taxon_accuracy = torchmetrics.functional.accuracy(
+    preds=torch.tensor(results.pred_label_top1.values),
+    target=torch.tensor(results.label.values), 
+    average="none", 
+    num_classes=data_module.classes
+)
+taxon_precision = torchmetrics.functional.precision(
+    preds=torch.tensor(joint_results.pred_label_top1.values),
+    target=torch.tensor(joint_results.label.values),
+    average="none",
+    num_classes=data_module.classes
+)
+species_table = pd.DataFrame(
+    {"taxonID":data_module.keys(),
+     "accuracy":taxon_accuracy,
+     "precision":taxon_precision
+     })
+
+for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
+    comet_logger.experiment.log_metric("{}_accuracy".format(key), value)
 
 #Visualizations
 rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)

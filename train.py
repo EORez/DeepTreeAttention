@@ -46,7 +46,6 @@ data_module = data.TreeData(
     data_dir=config["crop_dir"],
     config=config,
     client=client,
-    metadata=True,
     comet_logger=comet_logger)
 
 data_module.setup()
@@ -101,6 +100,45 @@ results = m.evaluate_crowns(
     experiment=comet_logger.experiment,
 )
 
+## MODEL 2 ##
+all_but_PIPA = [x for x in list(data_module.species_label_dict.keys()) if x == "PIPA2"]
+#Create a list of dataloaders to traind
+all_but_PIPA_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = all_but_PIPA)
+all_but_PIPA_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = all_but_PIPA)
+
+#Load from state dict of previous run
+if config["pretrain_state_dict"]:
+    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=data_module.num_classes - 1, bands=config["bands"])
+else:
+    model = Hang2020.spectral_network(bands=config["bands"], classes=data_module.num_classes - 1)
+    
+#Load from state dict of previous run
+m2 = main.TreeModel(
+    model=model, 
+    classes=data_module.num_classes, 
+    loss_weight=loss_weight,
+    label_dict=data_module.species_label_dict)
+
+#Create trainer
+lr_monitor = LearningRateMonitor(logging_interval='epoch')
+trainer = Trainer(
+    gpus=data_module.config["gpus"],
+    fast_dev_run=data_module.config["fast_dev_run"],
+    max_epochs=data_module.config["epochs"],
+    accelerator=data_module.config["accelerator"],
+    checkpoint_callback=False,
+    callbacks=[lr_monitor],
+    logger=comet_logger)
+
+trainer.fit(m2, train_dataloader=all_but_PIPA_train, val_dataloaders=all_but_PIPA_test)
+
+#Save model checkpoint
+trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_PIPA.pl".format(comet_logger.experiment.id))
+results = m2.evaluate_crowns(
+    all_but_PIPA_test,
+    crowns = data_module.crowns,
+    experiment=comet_logger.experiment,
+)
 
 #Visualizations
 rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)

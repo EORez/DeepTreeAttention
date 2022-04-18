@@ -2,6 +2,7 @@ import geopandas as gpd
 import os
 import pandas as pd
 from pytorch_lightning import Trainer
+from src import data
 
 def test_fit(config, m, dm, comet_logger):
     trainer = Trainer(fast_dev_run=True, logger=comet_logger)
@@ -42,3 +43,8 @@ def test_predict_crown(config, m, dm, ROOT):
     assert label in dm.species_label_dict.keys()
     assert score > 0 
     
+def test_fit_new_dataloader(config, m, dm, ROOT, comet_logger):
+    trainer = Trainer(fast_dev_run=True, logger=comet_logger)
+    dm.train_ds = data.TreeDataset(csv_file="{}/tests/data/processed/train.csv".format(ROOT), config=config, taxonIDs=["PIST"], keep_others=True)    
+    dm.val_ds = data.TreeDataset(csv_file="{}/tests/data/processed/test.csv".format(ROOT), config=config, taxonIDs=["PIST"], keep_others=True)    
+    trainer.fit(m,datamodule=dm)

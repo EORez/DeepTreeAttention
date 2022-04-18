@@ -230,8 +230,13 @@ class TreeDataset(Dataset):
                 others = self.annotations[~(self.annotations.taxonID.isin(taxonIDs))]
                 others.taxonID = "OTHER"
                 self.annotations = pd.concat([taxon_to_keep, others])
+                taxonIDs.append("OTHER")
             else:
                 self.annotations = taxon_to_keep
+                
+            #Recode to correct length
+            species_labels = {k:v for k, v in enumerate(taxonIDs)}
+            self.annotations.labels = [species_labels[x] for x in self.annotations.labels]
         
         if sampling_ceiling:
             self.annotations = self.annotations.groupby("taxonID").apply(lambda x: x.head(sampling_ceiling)).reset_index(drop=True)
@@ -534,7 +539,7 @@ class TreeData(LightningDataModule):
                 csv_file = "{}/test.csv".format(self.data_dir),
                 config=self.config
             )            
-
+        
     def train_dataloader(self):
         data_loader = torch.utils.data.DataLoader(
             self.train_ds,

@@ -3,6 +3,8 @@ import os
 import pandas as pd
 from pytorch_lightning import Trainer
 from src import data
+from src import main
+from src.models import Hang2020
 
 def test_fit(config, m, dm, comet_logger):
     trainer = Trainer(fast_dev_run=True, logger=comet_logger)
@@ -43,8 +45,25 @@ def test_predict_crown(config, m, dm, ROOT):
     assert label in dm.species_label_dict.keys()
     assert score > 0 
     
-def test_fit_new_dataloader(config, m, dm, ROOT, comet_logger):
-    trainer = Trainer(fast_dev_run=True, logger=comet_logger)
-    dm.train_ds = data.TreeDataset(csv_file="{}/tests/data/processed/train.csv".format(ROOT), config=config, taxonIDs=["PIST"], keep_others=True)    
-    dm.val_ds = data.TreeDataset(csv_file="{}/tests/data/processed/test.csv".format(ROOT), config=config, taxonIDs=["PIST"], keep_others=True)    
+def test_fit_new_dataloader(config, dm, ROOT):
+    model = Hang2020.spectral_network(bands=config["bands"], classes=2)    
+    trainer = Trainer(fast_dev_run=True)
+    dm.train_ds = data.TreeDataset(
+        csv_file="{}/tests/data/processed/train.csv".format(ROOT),
+        config=config,
+        taxonIDs=["PIST"],
+        keep_others=True)    
+    dm.val_ds = data.TreeDataset(
+        csv_file="{}/tests/data/processed/test.csv".format(ROOT),
+        config=config,
+        taxonIDs=["PIST"],
+        keep_others=True)    
+    dm.species_label_dict = {"PIPA2":0,"OTHER":1}
+    dm.label_to_taxonID = {v: k  for k, v in dm.species_label_dict.items()}
+        #Load from state dict of previous run
+    m = main.TreeModel(
+        model=model, 
+        loss_weight=[1,1],
+        classes=2, 
+        label_dict=dm.species_label_dict)
     trainer.fit(m,datamodule=dm)

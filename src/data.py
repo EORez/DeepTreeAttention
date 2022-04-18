@@ -224,7 +224,7 @@ class TreeDataset(Dataset):
         self.annotations = pd.read_csv(csv_file)
         
         #Filter taxa 
-        if isinstance(taxonIDs, type(list)):
+        if isinstance(taxonIDs, list):
             taxon_to_keep = self.annotations[self.annotations.taxonID.isin(taxonIDs)]
             if keep_others:
                 others = self.annotations[~(self.annotations.taxonID.isin(taxonIDs))]
@@ -235,9 +235,10 @@ class TreeDataset(Dataset):
                 self.annotations = taxon_to_keep
                 
             #Recode to correct length
-            species_labels = {k:v for k, v in enumerate(taxonIDs)}
-            self.annotations.labels = [species_labels[x] for x in self.annotations.labels]
-        
+            species_labels = {v:k for k, v in enumerate(taxonIDs)}
+            self.annotations.label = [species_labels[x] for x in self.annotations.taxonID]
+            self.annotations.reset_index(drop=True, inplace=True)
+            
         if sampling_ceiling:
             self.annotations = self.annotations.groupby("taxonID").apply(lambda x: x.head(sampling_ceiling)).reset_index(drop=True)
         
@@ -261,18 +262,18 @@ class TreeDataset(Dataset):
 
     def __getitem__(self, index):
         inputs = {}
-        image_path = self.annotations.image_path.loc[index]      
+        image_path = self.annotations.image_path.iloc[index]      
         individual = os.path.basename(image_path.split(".tif")[0])
         if self.config["preload_images"]:
             inputs["HSI"] = self.image_dict[index]
         else:
-            image_basename = self.annotations.image_path.loc[index]  
+            image_basename = self.annotations.image_path.iloc[index]  
             image_path = os.path.join(self.config["crop_dir"],image_basename)                
             image = load_image(image_path, image_size=self.image_size)
             inputs["HSI"] = image
 
         if self.train:
-            label = self.annotations.label.loc[index]
+            label = self.annotations.label.iloc[index]
             label = torch.tensor(label, dtype=torch.long)
 
             inputs["HSI"] = self.transformer(inputs["HSI"])

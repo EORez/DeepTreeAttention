@@ -1,6 +1,7 @@
 #Test data module
 from src import data
 import pandas as pd
+import numpy as np
 
 def test_TreeData_setup(config, ROOT):
     #One site's worth of data
@@ -32,8 +33,6 @@ def test_TreeDataset(config, ROOT):
 
 def test_TreeDataset_subset(config, ROOT):
     #Train loader
-    data_loader = data.TreeDataset(csv_file="{}/tests/data/processed/train.csv".format(ROOT), config=config, taxonIDs=["PIST"], keep_others=True)
-    individuals, inputs, label = data_loader[0]
-    image = inputs["HSI"]
-    assert image.shape == (3, config["image_size"], config["image_size"])
-    
+    ds = data.TreeDataset(csv_file="{}/tests/data/processed/train.csv".format(ROOT), config=config, taxonIDs=["PIST"], keep_others=True)
+    labels = [x[2] for x in ds]
+    assert all(np.unique(labels) == np.array([0,1]))

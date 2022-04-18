@@ -65,7 +65,7 @@ if not config["use_data_commit"]:
 #Create a list of dataloaders to traind
 data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
 data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
-data_module.species_label_dict = {"PIPA2","OTHER"}
+data_module.species_label_dict = {"PIPA2":0,"OTHER":1}
 data_module.label_to_taxonID = {v: k  for k, v in data_module.species_label_dict.items()}
 
 #Load from state dict of previous run

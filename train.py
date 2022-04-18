@@ -125,7 +125,6 @@ m2 = main.TreeModel(
     model=model, 
     loss_weight=[1 for x in range(data_module.num_classes-1)],
     classes=data_module.num_classes-1,
-    loss_weight=loss_weight,
     label_dict=data_module.species_label_dict)
 
 #Create trainer

@@ -77,7 +77,8 @@ else:
 #Load from state dict of previous run
 m = main.TreeModel(
     model=model, 
-    classes=data_module.num_classes, 
+    loss_weight=[1,1],
+    classes=2, 
     label_dict=data_module.species_label_dict)
 
 #Create trainer
@@ -119,7 +120,9 @@ else:
 #Load from state dict of previous run
 m2 = main.TreeModel(
     model=model, 
-    classes=data_module.num_classes, 
+    loss_weight=[1 for x in range(data_module.num_classes-1)]
+    classes=data_module.num_classes-1,
+    loss_weight=loss_weight,
     label_dict=data_module.species_label_dict)
 
 #Create trainer

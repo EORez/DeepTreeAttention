@@ -84,7 +84,7 @@ def config(ROOT):
 @pytest.fixture(scope="session")
 def dm(config, ROOT):
     csv_file = "{}/tests/data/sample_neon.csv".format(ROOT)               
-    dm = data.TreeData(config=config, csv_file=csv_file, data_dir="{}/tests/data".format(ROOT), debug=True, metadata=True) 
+    dm = data.TreeData(config=config, csv_file=csv_file, data_dir="{}/tests/data".format(ROOT), debug=True) 
     dm.setup()    
     
     return dm

@@ -63,8 +63,10 @@ if not config["use_data_commit"]:
 
 ## Model 1 ##
 #Create a list of dataloaders to traind
-PIPA_v_all_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
-PIPA_v_all_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
+data_module.species_label_dict = {"PIPA2","OTHER"}
+data_module.label_to_taxonID = {v: k  for k, v in data_module.species_label_dict.items()}
 
 #Load from state dict of previous run
 if config["pretrain_state_dict"]:
@@ -89,7 +91,7 @@ trainer = Trainer(
     callbacks=[lr_monitor],
     logger=comet_logger)
 
-trainer.fit(m, train_dataloader=PIPA_v_all_train, val_dataloaders=PIPA_v_all_test)
+trainer.fit(m, datamodule=data_module)
 
 #Save model checkpoint
 trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
@@ -102,8 +104,10 @@ results = m.evaluate_crowns(
 ## MODEL 2 ##
 all_but_PIPA = [x for x in list(data_module.species_label_dict.keys()) if x == "PIPA2"]
 #Create a list of dataloaders to traind
-all_but_PIPA_train = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = all_but_PIPA, config=config)
-all_but_PIPA_test = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = all_but_PIPA, config=config)
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = all_but_PIPA, config=config)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = all_but_PIPA, config=config)
+data_module.species_label_dict = {k:v for k, v in enumerate(all_but_PIPA)}
+data_module.label_to_taxonID = {v: k  for k, v in data_module.species_label_dict.items()}
 
 #Load from state dict of previous run
 if config["pretrain_state_dict"]:
@@ -128,7 +132,7 @@ trainer = Trainer(
     callbacks=[lr_monitor],
     logger=comet_logger)
 
-trainer.fit(m2, train_dataloader=all_but_PIPA_train, val_dataloaders=all_but_PIPA_test)
+trainer.fit(m2, datamodule=data_module)
 
 #Save model checkpoint
 trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_PIPA.pl".format(comet_logger.experiment.id))

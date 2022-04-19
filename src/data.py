@@ -220,28 +220,8 @@ class TreeDataset(Dataset):
        keep_others (logical): If True, convert all taxon not in taxonIDs to 'Other'
        sampling_ceiling (int): Number of samples per class to sample
     """
-    def __init__(self, csv_file, config=None, train=True, taxonIDs=None, keep_others=None, sampling_ceiling=None):
+    def __init__(self, csv_file, config=None, train=True):
         self.annotations = pd.read_csv(csv_file)
-        
-        #Filter taxa 
-        if isinstance(taxonIDs, list):
-            taxon_to_keep = self.annotations[self.annotations.taxonID.isin(taxonIDs)]
-            if isinstance(keep_others, list):
-                others = self.annotations[self.annotations.taxonID.isin(keep_others)]
-                others.taxonID = "OTHER"
-                self.annotations = pd.concat([taxon_to_keep, others])
-                taxonIDs.append("OTHER")
-            else:
-                self.annotations = taxon_to_keep
-                
-            #Recode to correct length
-            species_labels = {v:k for k, v in enumerate(taxonIDs)}
-            self.annotations.label = [species_labels[x] for x in self.annotations.taxonID]
-            self.annotations.reset_index(drop=True, inplace=True)
-            
-        if sampling_ceiling:
-            self.annotations = self.annotations.groupby("taxonID").apply(lambda x: x.head(sampling_ceiling)).reset_index(drop=True)
-        
         self.train = train
         self.config = config         
         self.image_size = config["image_size"]

@@ -103,7 +103,7 @@ with comet_logger.experiment.context_manager("PIPA2"):
     trainer.fit(m, datamodule=data_module)
 
     #Save model checkpoint
-    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
+    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
     results = m.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -169,7 +169,7 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
     trainer.fit(m2, datamodule=data_module)
 
     #Save model checkpoint
-    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_OAK.pl".format(comet_logger.experiment.id))
+    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_OAK.pl".format(comet_logger.experiment.id))
     results2 = m2.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -231,7 +231,7 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
     trainer.fit(m3, datamodule=data_module)
 
     #Save model checkpoint
-    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
+    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
     results3 = m3.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -249,7 +249,8 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
     )  
         
 #Get joint scores
-original_label_dict["OTHER"] = len(original_label_dict) + 1
+new_label_dict = original_label_dict.copy()
+new_label_dict["OTHER"] = len(new_label_dict)
 results = results[results.taxonID=="PIPA2"]
 results2 = results2[results2.taxonID.isin(non_oaks)]
 joint_results = pd.concat([results, results2, results3])
@@ -283,7 +284,7 @@ taxon_precision = torchmetrics.functional.precision(
     num_classes=data_module.num_classes
 )
 species_table = pd.DataFrame(
-    {"taxonID":list(data_module.species_label_dict.keys()),
+    {"taxonID":list(original_label_dict.keys()),
      "accuracy":taxon_accuracy,
      "precision":taxon_precision
      })

@@ -227,7 +227,7 @@ trainer = Trainer(
     callbacks=[lr_monitor],
     logger=comet_logger)
 
-with comet_logger.experiment.context_manager("Oak_vNonOak"):
+with comet_logger.experiment.context_manager("Oaks"):
     trainer.fit(m3, datamodule=data_module)
 
     #Save model checkpoint

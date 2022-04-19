@@ -254,7 +254,7 @@ new_label_dict["OTHER"] = len(new_label_dict)
 results = results[results.taxonID=="PIPA2"]
 results2 = results2[results2.taxonID.isin(non_oaks)]
 joint_results = pd.concat([results, results2, results3])
-joint_results["joint_results.pred_label_top1"] = [original_label_dict[x] for x in joint_results.pred_taxa_top1]
+joint_results["joint_results.pred_label_top1"] = [new_label_dict[x] for x in joint_results.pred_taxa_top1]
 
 final_micro = torchmetrics.functional.accuracy(
     preds=torch.tensor(joint_results.pred_label_top1.values),

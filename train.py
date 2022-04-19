@@ -69,15 +69,9 @@ if not config["use_data_commit"]:
 
 ## Model 1 ##
 #Create a list of dataloaders to traind
-#Get a set of PIPA2 that were discarded during sampling
-PIPA2 = data_module.crowns[data_module.crowns.taxonID=="PIPA2"]
-PIPA2 = PIPA2[~(PIPA2.individualID.isin(data_module.train.individualID))]
-PIPA2 = PIPA2[~(PIPA2.individualID.isin(data_module.test.individualID))]
-PIPA2 = PIPA2.head(n=data_module.train[~(data_module.train.taxonID=="PIPA2")].shape[0] - data_module.train[data_module.train.taxonID=="PIPA2"].shape[0])          
-PIPA2 = pd.concat([data_module.train, PIPA2])
-PIPA2.to_csv(os.path.join(data_module.data_dir, "PIPA2.csv"))
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "PIPA2.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
+non_PIPA = [x for x in list(original_label_dict.keys()) if not x=="PIPA2"]
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "train.csv"), taxonIDs = ["PIPA2"], keep_others = non_PIPA, config=config)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = non_PIPA, config=config)
 data_module.species_label_dict = {"PIPA2":0,"OTHER":1}
 data_module.label_to_taxonID = {v: k  for k, v in data_module.species_label_dict.items()}
 
@@ -127,36 +121,37 @@ with comet_logger.experiment.context_manager("PIPA2"):
     )
 
 ## MODEL 2 ##
-
-all_but_PIPA = [x for x in list(original_label_dict.keys()) if not x == "PIPA2"]
-
+non_oaks = [x for x in list(original_label_dict.keys()) if not "QU" in x]
+oaks = [x for x in list(original_label_dict.keys()) if "QU" in x]
+non_oaks.remove("PIPA2")
 #Create a list of dataloaders to traind
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = all_but_PIPA, config=config)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = all_but_PIPA, config=config)
-data_module.species_label_dict = {v:k for k, v in enumerate(all_but_PIPA)}
+data_module.species_label_dict = {v:k for k, v in enumerate(non_oaks)}
+data_module.species_label_dict["OTHER"] = len(non_oaks)
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = non_oaks, config=config, keep_others=oaks)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = non_oaks, config=config, keep_others=oaks)
 data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
 #Load from state dict of previous run
 if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(all_but_PIPA), bands=config["bands"])
+    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(data_module.species_label_dict), bands=config["bands"])
 else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=len(all_but_PIPA))
-    
-#Load from state dict of previous run
+    model = Hang2020.spectral_network(bands=config["bands"], classes=len(data_module.species_label_dict))
 
 #Loss weight, balanced
 loss_weight = []
 for x in data_module.species_label_dict:
-    loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
-loss_weight = np.array(loss_weight/np.max(loss_weight))
+    if x == "OTHER":
+        loss_weight.append(1/data_module.train[data_module.train.taxonID.str.contains("QU")].shape[0])
+    else:
+        loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
 
-#Provide min value
+loss_weight = np.array(loss_weight/np.max(loss_weight))
 loss_weight[loss_weight < 0.5] = 0.5  
 
 m2 = main.TreeModel(
     model=model, 
     loss_weight=loss_weight,
-    classes=len(all_but_PIPA),
+    classes=len(data_module.species_label_dict),
     label_dict=data_module.species_label_dict)
 
 #Create trainer
@@ -170,11 +165,11 @@ trainer = Trainer(
     callbacks=[lr_monitor],
     logger=comet_logger)
 
-with comet_logger.experiment.context_manager("all_but_PIPA"):
+with comet_logger.experiment.context_manager("Oak_vNonOak"):
     trainer.fit(m2, datamodule=data_module)
 
     #Save model checkpoint
-    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_PIPA.pl".format(comet_logger.experiment.id))
+    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_OAK.pl".format(comet_logger.experiment.id))
     results2 = m2.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -191,10 +186,72 @@ with comet_logger.experiment.context_manager("all_but_PIPA"):
         rgb_pool=rgb_pool
     )    
 
+## MODEL 3 ##
+oaks = [x for x in list(original_label_dict.keys()) if "QU" in x]
+#Create a list of dataloaders to traind
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = oaks, config=config)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = oaks, config=config)
+data_module.species_label_dict = {v:k for k, v in enumerate(oaks)}
+data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
+
+#Load from state dict of previous run
+if config["pretrain_state_dict"]:
+    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(data_module.species_label_dict), bands=config["bands"])
+else:
+    model = Hang2020.spectral_network(bands=config["bands"], classes=len(data_module.species_label_dict))
+
+#Loss weight, balanced
+loss_weight = []
+for x in data_module.species_label_dict:
+    loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
+loss_weight = np.array(loss_weight/np.max(loss_weight))
+
+#Provide min value
+loss_weight[loss_weight < 0.5] = 0.5  
+
+m3 = main.TreeModel(
+    model=model, 
+    loss_weight=loss_weight,
+    classes=len(data_module.species_label_dict),
+    label_dict=data_module.species_label_dict)
+
+#Create trainer
+lr_monitor = LearningRateMonitor(logging_interval='epoch')
+trainer = Trainer(
+    gpus=data_module.config["gpus"],
+    fast_dev_run=data_module.config["fast_dev_run"],
+    max_epochs=data_module.config["epochs_model3"],
+    accelerator=data_module.config["accelerator"],
+    checkpoint_callback=False,
+    callbacks=[lr_monitor],
+    logger=comet_logger)
+
+with comet_logger.experiment.context_manager("Oak_vNonOak"):
+    trainer.fit(m3, datamodule=data_module)
+
+    #Save model checkpoint
+    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
+    results3 = m3.evaluate_crowns(
+        data_module.val_dataloader(),
+        crowns = data_module.crowns,
+        experiment=comet_logger.experiment,
+    )
+    
+    visualize.confusion_matrix(
+        comet_experiment=comet_logger.experiment,
+        results=results,
+        species_label_dict=data_module.species_label_dict,
+        test_crowns=data_module.crowns,
+        test=data_module.test,
+        test_points=data_module.canopy_points,
+        rgb_pool=rgb_pool
+    )  
+        
 #Get joint scores
 original_label_dict["OTHER"] = len(original_label_dict) + 1
 results = results[results.taxonID=="PIPA2"]
-joint_results = pd.concat([results, results2])
+results2 = results2[results2.taxonID.isin(non_oaks)]
+joint_results = pd.concat([results, results2, results3])
 joint_results["joint_results.pred_label_top1"] = [original_label_dict[x] for x in joint_results.pred_taxa_top1]
 
 final_micro = torchmetrics.functional.accuracy(

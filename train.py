@@ -69,7 +69,14 @@ if not config["use_data_commit"]:
 
 ## Model 1 ##
 #Create a list of dataloaders to traind
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
+#Get a set of PIPA2 that were discarded during sampling
+PIPA2 = data_module.crowns[data_module.crowns.taxonID=="PIPA2"]
+PIPA2 = PIPA2[~(PIPA2.individual.isin(data_module.train.individual))]
+PIPA2 = PIPA2[~(PIPA2.individual.isin(data_module.test.individual)]
+PIPA2 = PIPA2.head(n=data_module.train[~(data_module.train.taxonID=="PIPA2")].shape[0] - data_module.train[data_module.train.taxonID=="PIPA2"].shape[0])          
+PIPA2 = pd.concat(data_module.train, PIPA2)
+PIPA2.to_csv(os.path.join(data_module.data_dir, "PIPA2.csv"))
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "PIPA2.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
 data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
 data_module.species_label_dict = {"PIPA2":0,"OTHER":1}
 data_module.label_to_taxonID = {v: k  for k, v in data_module.species_label_dict.items()}

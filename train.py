@@ -74,7 +74,7 @@ PIPA2 = data_module.crowns[data_module.crowns.taxonID=="PIPA2"]
 PIPA2 = PIPA2[~(PIPA2.individualID.isin(data_module.train.individualID))]
 PIPA2 = PIPA2[~(PIPA2.individualID.isin(data_module.test.individualID))]
 PIPA2 = PIPA2.head(n=data_module.train[~(data_module.train.taxonID=="PIPA2")].shape[0] - data_module.train[data_module.train.taxonID=="PIPA2"].shape[0])          
-PIPA2 = pd.concat(data_module.train, PIPA2)
+PIPA2 = pd.concat([data_module.train, PIPA2])
 PIPA2.to_csv(os.path.join(data_module.data_dir, "PIPA2.csv"))
 data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "PIPA2.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)
 data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = ["PIPA2"], keep_others = True, config=config)

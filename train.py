@@ -71,8 +71,8 @@ if not config["use_data_commit"]:
 #Create a list of dataloaders to traind
 #Get a set of PIPA2 that were discarded during sampling
 PIPA2 = data_module.crowns[data_module.crowns.taxonID=="PIPA2"]
-PIPA2 = PIPA2[~(PIPA2.individual.isin(data_module.train.individual))]
-PIPA2 = PIPA2[~(PIPA2.individual.isin(data_module.test.individual))]
+PIPA2 = PIPA2[~(PIPA2.individualID.isin(data_module.train.individualID))]
+PIPA2 = PIPA2[~(PIPA2.individualID.isin(data_module.test.individualID))]
 PIPA2 = PIPA2.head(n=data_module.train[~(data_module.train.taxonID=="PIPA2")].shape[0] - data_module.train[data_module.train.taxonID=="PIPA2"].shape[0])          
 PIPA2 = pd.concat(data_module.train, PIPA2)
 PIPA2.to_csv(os.path.join(data_module.data_dir, "PIPA2.csv"))

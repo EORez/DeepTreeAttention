@@ -220,14 +220,14 @@ class TreeDataset(Dataset):
        keep_others (logical): If True, convert all taxon not in taxonIDs to 'Other'
        sampling_ceiling (int): Number of samples per class to sample
     """
-    def __init__(self, csv_file, config=None, train=True, taxonIDs=None, keep_others=False, sampling_ceiling=None):
+    def __init__(self, csv_file, config=None, train=True, taxonIDs=None, keep_others=None, sampling_ceiling=None):
         self.annotations = pd.read_csv(csv_file)
         
         #Filter taxa 
         if isinstance(taxonIDs, list):
             taxon_to_keep = self.annotations[self.annotations.taxonID.isin(taxonIDs)]
-            if keep_others:
-                others = self.annotations[~(self.annotations.taxonID.isin(taxonIDs))]
+            if isinstance(keep_others, list):
+                others = self.annotations[self.annotations.taxonID.isin(keep_others)]
                 others.taxonID = "OTHER"
                 self.annotations = pd.concat([taxon_to_keep, others])
                 taxonIDs.append("OTHER")

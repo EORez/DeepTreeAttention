@@ -143,9 +143,19 @@ else:
     model = Hang2020.spectral_network(bands=config["bands"], classes=len(all_but_PIPA))
     
 #Load from state dict of previous run
+
+#Loss weight, balanced
+loss_weight = []
+for x in data_module.species_label_dict:
+    loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
+loss_weight = np.array(loss_weight/np.max(loss_weight))
+
+#Provide min value
+loss_weight[loss_weight < 0.5] = 0.5  
+
 m2 = main.TreeModel(
     model=model, 
-    loss_weight=[1 for x in range(len(all_but_PIPA))],
+    loss_weight=loss_weight,
     classes=len(all_but_PIPA),
     label_dict=data_module.species_label_dict)
 

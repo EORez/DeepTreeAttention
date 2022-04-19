@@ -103,7 +103,7 @@ with comet_logger.experiment.context_manager("PIPA2"):
     trainer.fit(m, datamodule=data_module)
 
     #Save model checkpoint
-    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
+    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
     results = m.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -127,8 +127,8 @@ non_oaks.remove("PIPA2")
 #Create a list of dataloaders to traind
 data_module.species_label_dict = {v:k for k, v in enumerate(non_oaks)}
 data_module.species_label_dict["OTHER"] = len(non_oaks)
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = non_oaks, config=config, keep_others=oaks)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = non_oaks, config=config, keep_others=oaks)
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = non_oaks.copy(), config=config, keep_others=oaks)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = non_oaks.copy(), config=config, keep_others=oaks)
 data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
 #Load from state dict of previous run
@@ -169,7 +169,7 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
     trainer.fit(m2, datamodule=data_module)
 
     #Save model checkpoint
-    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_OAK.pl".format(comet_logger.experiment.id))
+    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_OAK.pl".format(comet_logger.experiment.id))
     results2 = m2.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -178,7 +178,7 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
     
     visualize.confusion_matrix(
         comet_experiment=comet_logger.experiment,
-        results=results,
+        results=results2,
         species_label_dict=data_module.species_label_dict,
         test_crowns=data_module.crowns,
         test=data_module.test,
@@ -189,8 +189,8 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
 ## MODEL 3 ##
 oaks = [x for x in list(original_label_dict.keys()) if "QU" in x]
 #Create a list of dataloaders to traind
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = oaks, config=config)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = oaks, config=config)
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir,"train.csv"), taxonIDs = oaks.copy(), config=config)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir,"test.csv"), taxonIDs = oaks.copy(), config=config)
 data_module.species_label_dict = {v:k for k, v in enumerate(oaks)}
 data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
@@ -204,6 +204,7 @@ else:
 loss_weight = []
 for x in data_module.species_label_dict:
     loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
+
 loss_weight = np.array(loss_weight/np.max(loss_weight))
 
 #Provide min value
@@ -230,7 +231,7 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
     trainer.fit(m3, datamodule=data_module)
 
     #Save model checkpoint
-    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
+    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
     results3 = m3.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -239,7 +240,7 @@ with comet_logger.experiment.context_manager("Oak_vNonOak"):
     
     visualize.confusion_matrix(
         comet_experiment=comet_logger.experiment,
-        results=results,
+        results=results3,
         species_label_dict=data_module.species_label_dict,
         test_crowns=data_module.crowns,
         test=data_module.test,

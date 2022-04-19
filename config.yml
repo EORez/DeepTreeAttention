@@ -56,7 +56,7 @@ fast_dev_run: False
 accelerator: dp
 epochs_model1: 40
 epochs_model2: 100
-epochs_model3: 100
+epochs_model2: 100
 
 #Evaluation config
 #Top k class recall score

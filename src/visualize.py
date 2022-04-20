@@ -30,6 +30,8 @@ def index_to_example(index, test, test_crowns, test_points, rgb_pool, comet_expe
     fig = plt.figure(0)
     ax = fig.add_subplot(1, 1, 1)                
     geom = test_crowns[test_crowns.individual == individual].geometry.iloc[0]
+    taxonID = test_crowns[test_crowns.individual == individual].taxonID.iloc[0]
+    
     left, bottom, right, top = geom.bounds
     
     #Find image
@@ -46,7 +48,7 @@ def index_to_example(index, test, test_crowns, test_points, rgb_pool, comet_expe
     #Plot field coordinate
     stem = test_points[test_points.individual == individual]
     stem.plot(ax=ax)
-    
+    plt.title("{}: {}".format(individual, taxonID))
     image_name = "{}/{}_confusion.png".format(tmpdir,individual)
     plt.savefig(image_name)
     results = comet_experiment.log_image(image_name, name = "{}".format(individual))

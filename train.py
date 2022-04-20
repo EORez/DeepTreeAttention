@@ -21,6 +21,66 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 import pandas as pd
 from pandas.util import hash_pandas_object
 
+def run(filename, epochs, data_module):
+    """Wrapper function to execute a model"""
+    data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "{}_train.csv".format(filename)), config=config)
+    data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir, "{}_test.csv".format(filename)), config=config)
+    
+    #Load from state dict of previous run
+    if config["pretrain_state_dict"]:
+        model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(data_module.species_label_dict), bands=config["bands"])
+    else:
+        model = Hang2020.spectral_network(bands=config["bands"], classes=len(data_module.species_label_dict))
+    
+    #Loss weight, balanced
+    train = pd.read_csv(os.path.join(data_module.data_dir, "{}_train.csv".format(filename)))
+    test = pd.read_csv(os.path.join(data_module.data_dir, "{}_test.csv".format(filename)))    
+    loss_weight = []
+    for x in data_module.species_label_dict:
+        loss_weight.append(1/train[train.taxonID==x].shape[0])
+    
+    loss_weight = np.array(loss_weight/np.max(loss_weight))
+    
+    m = main.TreeModel(
+        model=model, 
+        loss_weight=loss_weight,
+        classes=len(data_module.species_label_dict),
+        label_dict=data_module.species_label_dict)
+    
+    #Create trainer
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
+    trainer = Trainer(
+        gpus=data_module.config["gpus"],
+        fast_dev_run=data_module.config["fast_dev_run"],
+        max_epochs=epochs,
+        accelerator=data_module.config["accelerator"],
+        checkpoint_callback=False,
+        callbacks=[lr_monitor],
+        logger=comet_logger)
+    
+    with comet_logger.experiment.context_manager(filename):
+        trainer.fit(m, datamodule=data_module)
+    
+        #Save model checkpoint
+        #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
+        results = m.evaluate_crowns(
+            data_module.val_dataloader(),
+            crowns = data_module.crowns,
+            experiment=comet_logger.experiment,
+        )
+        
+        visualize.confusion_matrix(
+            comet_experiment=comet_logger.experiment,
+            results=results,
+            species_label_dict=data_module.species_label_dict,
+            test_crowns=data_module.crowns,
+            test=test,
+            test_points=data_module.canopy_points,
+            rgb_pool=rgb_pool
+        )      
+
+    return results
+
 #Get branch name for the comet tag
 git_branch=sys.argv[1]
 git_commit=sys.argv[2]
@@ -83,60 +143,7 @@ PIPA_split_test = test_df.copy()
 PIPA_split_test.loc[~(PIPA_split_test.taxonID == "PIPA2"),"taxonID"] = "OTHER"
 PIPA_split_test.label = [data_module.species_label_dict[x] for x in PIPA_split_test.taxonID]
 PIPA_split_test.to_csv(os.path.join(data_module.data_dir, "PIPA2_test.csv"))
-
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "PIPA2_train.csv"), config=config)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir, "PIPA2_test.csv"), config=config)
-
-#Load from state dict of previous run
-if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=2, bands=config["bands"])
-else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=2)
-
-#Load from state dict of previous run
-#Loss weight, balanced
-loss_weight = []
-for x in data_module.species_label_dict:
-    loss_weight.append(1/PIPA_split_train[PIPA_split_train.taxonID==x].shape[0])
-loss_weight = np.array(loss_weight/np.max(loss_weight))
-
-m = main.TreeModel(
-    model=model, 
-    loss_weight=loss_weight,
-    classes=2, 
-    label_dict=data_module.species_label_dict)
-
-#Create trainer
-lr_monitor = LearningRateMonitor(logging_interval='epoch')
-trainer = Trainer(
-    gpus=data_module.config["gpus"],
-    fast_dev_run=data_module.config["fast_dev_run"],
-    max_epochs=data_module.config["epochs_model1"],
-    accelerator=data_module.config["accelerator"],
-    checkpoint_callback=False,
-    callbacks=[lr_monitor],
-    logger=comet_logger)
-
-with comet_logger.experiment.context_manager("PIPA2"):
-    trainer.fit(m, datamodule=data_module)
-
-    #Save model checkpoint
-    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_PIPA.pl".format(comet_logger.experiment.id))
-    results = m.evaluate_crowns(
-        data_module.val_dataloader(),
-        crowns = data_module.crowns,
-        experiment=comet_logger.experiment,
-    )
-    
-    visualize.confusion_matrix(
-        comet_experiment=comet_logger.experiment,
-        results=results,
-        species_label_dict=data_module.species_label_dict,
-        test_crowns=data_module.crowns,
-        test=PIPA_split_test,
-        test_points=data_module.canopy_points,
-        rgb_pool=rgb_pool
-    )
+results1 = run(filename="PIPA2", epochs=data_module.config["epochs_model1"], data_module=data_module)
 
 ## MODEL 2 ##
 data_module.species_label_dict = {"CONIFER":0,"BROADLEAF":1}
@@ -154,127 +161,27 @@ conifer_test.loc[conifer_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = 
 conifer_test.label = [data_module.species_label_dict[x] for x in conifer_test.taxonID]
 conifer_test.to_csv(os.path.join(data_module.data_dir, "conifer_test.csv"))
 
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "conifer_train.csv"), config=config)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir, "conifer_test.csv"), config=config)
-
-#Load from state dict of previous run
-if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(data_module.species_label_dict), bands=config["bands"])
-else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=len(data_module.species_label_dict))
-
-#Loss weight, balanced
-loss_weight = []
-for x in data_module.species_label_dict:
-    loss_weight.append(1/conifer_train[conifer_train.taxonID==x].shape[0])
-loss_weight = np.array(loss_weight/np.max(loss_weight))
-
-m2 = main.TreeModel(
-    model=model, 
-    loss_weight=loss_weight,
-    classes=len(data_module.species_label_dict),
-    label_dict=data_module.species_label_dict)
-
-#Create trainer
-lr_monitor = LearningRateMonitor(logging_interval='epoch')
-trainer = Trainer(
-    gpus=data_module.config["gpus"],
-    fast_dev_run=data_module.config["fast_dev_run"],
-    max_epochs=data_module.config["epochs_model2"],
-    accelerator=data_module.config["accelerator"],
-    checkpoint_callback=False,
-    callbacks=[lr_monitor],
-    logger=comet_logger)
-
-with comet_logger.experiment.context_manager("conifer"):
-    trainer.fit(m2, datamodule=data_module)
-
-    #Save model checkpoint
-    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_not_OAK.pl".format(comet_logger.experiment.id))
-    results2 = m2.evaluate_crowns(
-        data_module.val_dataloader(),
-        crowns = data_module.crowns,
-        experiment=comet_logger.experiment,
-    )
-    
-    visualize.confusion_matrix(
-        comet_experiment=comet_logger.experiment,
-        results=results2,
-        species_label_dict=data_module.species_label_dict,
-        test_crowns=data_module.crowns,
-        test=conifer_test,
-        test_points=data_module.canopy_points,
-        rgb_pool=rgb_pool
-    )    
+results2 = run(filename="conifer", epochs=data_module.config["epochs_model2"], data_module=data_module)
 
 ## MODEL 3 ##
-broadleaf = [x for x in list(original_label_dict.keys()) if not x in ["PICL","PIEL","PITA","PIPA2"]]
+broadleaf = [x for x in list(original_label_dict.keys()) if (not x in ["PICL","PIEL","PITA","PIPA2"]) & (not "QU" in x)]
 data_module.species_label_dict = {v:k for k, v in enumerate(broadleaf)}
+data_module.species_label_dict["OAK"] = len(data_module.species_label_dict)
 data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
 broadleaf_train = train_df.copy()
 broadleaf_train = broadleaf_train[~broadleaf_train.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]
+broadleaf_train.loc[broadleaf_train.taxonID.str.contains("QU"),"taxonID"] = "OAK"
 broadleaf_train.label = [data_module.species_label_dict[x] for x in broadleaf_train.taxonID]
 broadleaf_train.to_csv(os.path.join(data_module.data_dir, "broadleaf_train.csv"))
 
 broadleaf_test = test_df.copy()
 broadleaf_test = broadleaf_test[~broadleaf_test.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]
+broadleaf_test.loc[broadleaf_test.taxonID.str.contains("QU"),"taxonID"] = "OAK"
 broadleaf_test.label = [data_module.species_label_dict[x] for x in broadleaf_test.taxonID]
 broadleaf_test.to_csv(os.path.join(data_module.data_dir, "broadleaf_test.csv"))
-
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "broadleaf_train.csv"), config=config)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir, "broadleaf_test.csv"), config=config)
-
-#Load from state dict of previous run
-if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(data_module.species_label_dict), bands=config["bands"])
-else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=len(data_module.species_label_dict))
-
-#Loss weight, balanced
-loss_weight = []
-for x in data_module.species_label_dict:
-    loss_weight.append(1/broadleaf_train[broadleaf_train.taxonID==x].shape[0])
-
-loss_weight = np.array(loss_weight/np.max(loss_weight))
-
-m3 = main.TreeModel(
-    model=model, 
-    loss_weight=loss_weight,
-    classes=len(data_module.species_label_dict),
-    label_dict=data_module.species_label_dict)
-
-#Create trainer
-lr_monitor = LearningRateMonitor(logging_interval='epoch')
-trainer = Trainer(
-    gpus=data_module.config["gpus"],
-    fast_dev_run=data_module.config["fast_dev_run"],
-    max_epochs=data_module.config["epochs_model3"],
-    accelerator=data_module.config["accelerator"],
-    checkpoint_callback=False,
-    callbacks=[lr_monitor],
-    logger=comet_logger)
-
-with comet_logger.experiment.context_manager("Broadleaf"):
-    trainer.fit(m3, datamodule=data_module)
-
-    #Save model checkpoint
-    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
-    results3 = m3.evaluate_crowns(
-        data_module.val_dataloader(),
-        crowns = data_module.crowns,
-        experiment=comet_logger.experiment,
-    )
-    
-    visualize.confusion_matrix(
-        comet_experiment=comet_logger.experiment,
-        results=results3,
-        species_label_dict=data_module.species_label_dict,
-        test_crowns=data_module.crowns,
-        test=broadleaf_test,
-        test_points=data_module.canopy_points,
-        rgb_pool=rgb_pool
-    )  
+non_oak = [x for x in broadleaf_test.taxonID.unique() if not x == "OAK"]
+results3 = run(filename="broadleaf", epochs=data_module.config["epochs_model3"], data_module=data_module)
 
 ## MODEL 4 ##
 evergreen = [x for x in list(original_label_dict.keys()) if x in ["PICL","PIEL","PITA"]]
@@ -291,65 +198,32 @@ evergreen_test = evergreen_test[evergreen_test.taxonID.isin(["PICL","PIEL","PITA
 evergreen_test.label = [data_module.species_label_dict[x] for x in evergreen_test.taxonID]
 evergreen_test.to_csv(os.path.join(data_module.data_dir, "evergreen_test.csv"))
 
-data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "evergreen_train.csv"), config=config)
-data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir, "evergreen_test.csv"), config=config)
+results4 = run(filename="evergreen", epochs=data_module.config["epochs_model3"], data_module=data_module)
 
-#Load from state dict of previous run
-if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(data_module.species_label_dict), bands=config["bands"])
-else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=len(data_module.species_label_dict))
+## MODEL 5 ##
+oak = [x for x in list(original_label_dict.keys()) if "QU" in x]
+data_module.species_label_dict = {v:k for k, v in enumerate(oak)}
+data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
-#Loss weight, balanced
-loss_weight = []
-for x in data_module.species_label_dict:
-    loss_weight.append(1/evergreen_train[evergreen_train.taxonID==x].shape[0])
+oak_train = train_df.copy()
+oak_train = oak_train[oak_train.taxonID.str.contains("QU")]
+oak_train.label = [data_module.species_label_dict[x] for x in oak_train.taxonID]
+oak_train.to_csv(os.path.join(data_module.data_dir, "oak_train.csv"))
 
-loss_weight = np.array(loss_weight/np.max(loss_weight))
- 
-m4 = main.TreeModel(
-    model=model, 
-    loss_weight=loss_weight,
-    classes=len(data_module.species_label_dict),
-    label_dict=data_module.species_label_dict)
+oak_test = test_df.copy()
+oak_test = oak_test[oak_test.taxonID.str.contains("QU")]
+oak_test.label = [data_module.species_label_dict[x] for x in oak_test.taxonID]
+oak_test.to_csv(os.path.join(data_module.data_dir, "oak_test.csv"))
 
-#Create trainer
-lr_monitor = LearningRateMonitor(logging_interval='epoch')
-trainer = Trainer(
-    gpus=data_module.config["gpus"],
-    fast_dev_run=data_module.config["fast_dev_run"],
-    max_epochs=data_module.config["epochs_model3"],
-    accelerator=data_module.config["accelerator"],
-    checkpoint_callback=False,
-    callbacks=[lr_monitor],
-    logger=comet_logger)
-
-with comet_logger.experiment.context_manager("Broadleaf"):
-    trainer.fit(m4, datamodule=data_module)
-
-    #Save model checkpoint
-    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
-    results4 = m4.evaluate_crowns(
-        data_module.val_dataloader(),
-        crowns = data_module.crowns,
-        experiment=comet_logger.experiment,
-    )
+results5 = run(filename="oak", epochs=data_module.config["epochs_model3"], data_module=data_module)
     
-    visualize.confusion_matrix(
-        comet_experiment=comet_logger.experiment,
-        results=results4,
-        species_label_dict=data_module.species_label_dict,
-        test_crowns=data_module.crowns,
-        test=evergreen_test,
-        test_points=data_module.canopy_points,
-        rgb_pool=rgb_pool
-    )  
-        
 #Get joint scores
 new_label_dict = original_label_dict.copy()
 new_label_dict["OTHER"] = len(new_label_dict)
-results = results[results.taxonID=="PIPA2"]
-joint_results = pd.concat([results, results3, results4])
+new_label_dict["OAK"] = len(new_label_dict) + 1
+results1 = results1[results1.taxonID=="PIPA2"]
+results3 = results3[results3.taxonID.isin(non_oak)]
+joint_results = pd.concat([results1, results3, results4, results5])
 joint_results["joint_results.pred_label_top1"] = [new_label_dict[x] for x in joint_results.pred_taxa_top1]
 
 final_micro = torchmetrics.functional.accuracy(
@@ -361,10 +235,10 @@ final_macro = torchmetrics.functional.accuracy(
     preds=torch.tensor(joint_results.pred_label_top1.values),
     target=torch.tensor(joint_results.label.values),
     average="macro",
-    num_classes=data_module.num_classes+1)
+    num_classes=len(new_label_dict))
 
 comet_logger.experiment.log_metric("OSBS_micro",final_micro)
-comet_logger.experiment.log_metric("OSBS_macro",final_macro)
+comet_logger.experiment.log_metric("OSBS_macro",np.average(final_macro[:len(original_label_dict)]))
 
 # Log results by species
 taxon_accuracy = torchmetrics.functional.accuracy(
@@ -388,18 +262,9 @@ species_table = pd.DataFrame(
 for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
     comet_logger.experiment.log_metric("{}_accuracy".format(key), value)
 
-#Visualizations
-visualize.plot_spectra(results, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
-visualize.rgb_plots(
-    df=results,
-    config=config,
-    test_crowns=data_module.crowns,
-    test_points=data_module.canopy_points,
-    plot_n_individuals=config["plot_n_individuals"],
-    experiment=comet_logger.experiment)
 visualize.confusion_matrix(
     comet_experiment=comet_logger.experiment,
-    results=results,
+    results=joint_results,
     species_label_dict=data_module.species_label_dict,
     test_crowns=data_module.crowns,
     test=data_module.test,
@@ -408,15 +273,15 @@ visualize.confusion_matrix(
 )
 
 #Log prediction
-comet_logger.experiment.log_table("test_predictions.csv", results)
+comet_logger.experiment.log_table("test_predictions.csv", joint_results)
 
 #Within site confusion
 site_lists = data_module.train.groupby("label").site.unique()
-within_site_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=site_lists)
+within_site_confusion = metrics.site_confusion(y_true = joint_results.label, y_pred = joint_results.pred_label_top1, site_lists=site_lists)
 comet_logger.experiment.log_metric("within_site_confusion", within_site_confusion)
 
 #Within plot confusion
 plot_lists = data_module.train.groupby("label").plotID.unique()
-within_plot_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=plot_lists)
+within_plot_confusion = metrics.site_confusion(y_true = joint_results.label, y_pred = joint_results.pred_label_top1, site_lists=plot_lists)
 comet_logger.experiment.log_metric("within_plot_confusion", within_plot_confusion)
 

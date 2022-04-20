@@ -133,7 +133,7 @@ with comet_logger.experiment.context_manager("PIPA2"):
         results=results,
         species_label_dict=data_module.species_label_dict,
         test_crowns=data_module.crowns,
-        test=data_module.test,
+        test=PIPA_split_test,
         test_points=data_module.canopy_points,
         rgb_pool=rgb_pool
     )
@@ -202,7 +202,7 @@ with comet_logger.experiment.context_manager("conifer"):
         results=results2,
         species_label_dict=data_module.species_label_dict,
         test_crowns=data_module.crowns,
-        test=data_module.test,
+        test=conifer_test,
         test_points=data_module.canopy_points,
         rgb_pool=rgb_pool
     )    
@@ -271,7 +271,7 @@ with comet_logger.experiment.context_manager("Broadleaf"):
         results=results3,
         species_label_dict=data_module.species_label_dict,
         test_crowns=data_module.crowns,
-        test=data_module.test,
+        test=broadleaf_test,
         test_points=data_module.canopy_points,
         rgb_pool=rgb_pool
     )  
@@ -340,7 +340,7 @@ with comet_logger.experiment.context_manager("Broadleaf"):
         results=results4,
         species_label_dict=data_module.species_label_dict,
         test_crowns=data_module.crowns,
-        test=data_module.test,
+        test=evergreen_test,
         test_points=data_module.canopy_points,
         rgb_pool=rgb_pool
     )  

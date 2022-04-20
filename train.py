@@ -234,11 +234,11 @@ final_micro = torchmetrics.functional.accuracy(
 final_macro = torchmetrics.functional.accuracy(
     preds=torch.tensor(joint_results.pred_label_top1.values),
     target=torch.tensor(joint_results.label.values),
-    average="macro",
+    average="none",
     num_classes=len(new_label_dict))
 
 comet_logger.experiment.log_metric("OSBS_micro",final_micro)
-comet_logger.experiment.log_metric("OSBS_macro",np.average(final_macro[:len(original_label_dict)]))
+comet_logger.experiment.log_metric("OSBS_macro",np.nanmean(final_macro[:len(original_label_dict)]))
 
 # Log results by species
 taxon_accuracy = torchmetrics.functional.accuracy(

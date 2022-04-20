@@ -208,17 +208,20 @@ with comet_logger.experiment.context_manager("conifer"):
     )    
 
 ## MODEL 3 ##
-broadleaf = [x for x in list(original_label_dict.keys()) if not x in ["PICL","PIEL","PITA","PIPA2"]]
+broadleaf = [x for x in list(original_label_dict.keys()) if not x in ["PICL","PIEL","PITA","PIPA2"] | not "QU" in x]
 data_module.species_label_dict = {v:k for k, v in enumerate(broadleaf)}
+data_module.species_label_dict["OAK"] = len(data_module.species_label_dict)
 data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
 broadleaf_train = train_df.copy()
 broadleaf_train = broadleaf_train[~broadleaf_train.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]
+broadleaf_train.loc[broadleaf_train.taxonID.str.contains("QU"),"taxonID"] = "OAK"
 broadleaf_train.label = [data_module.species_label_dict[x] for x in broadleaf_train.taxonID]
 broadleaf_train.to_csv(os.path.join(data_module.data_dir, "broadleaf_train.csv"))
 
 broadleaf_test = test_df.copy()
 broadleaf_test = broadleaf_test[~broadleaf_test.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]
+broadleaf_test.loc[broadleaf_test.taxonID.str.contains("QU"),"taxonID"] = "OAK"
 broadleaf_test.label = [data_module.species_label_dict[x] for x in broadleaf_test.taxonID]
 broadleaf_test.to_csv(os.path.join(data_module.data_dir, "broadleaf_test.csv"))
 
@@ -278,6 +281,7 @@ with comet_logger.experiment.context_manager("Broadleaf"):
 
 ## MODEL 4 ##
 evergreen = [x for x in list(original_label_dict.keys()) if x in ["PICL","PIEL","PITA"]]
+evergreen.append("OAK")
 data_module.species_label_dict = {v:k for k, v in enumerate(evergreen)}
 data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
 
@@ -344,12 +348,82 @@ with comet_logger.experiment.context_manager("Broadleaf"):
         test_points=data_module.canopy_points,
         rgb_pool=rgb_pool
     )  
-        
+
+## MODEL 5 ##
+oak = [x for x in list(original_label_dict.keys()) if "QU" in x]
+data_module.species_label_dict = {v:k for k, v in enumerate(oak)}
+data_module.label_to_taxonID = {v:k for k, v in data_module.species_label_dict.items()}
+
+oak_train = train_df.copy()
+oak_train = oak_train[oak_train.taxonID.str.contains(["QU"])]
+oak_train.label = [data_module.species_label_dict[x] for x in oak_train.taxonID]
+oak_train.to_csv(os.path.join(data_module.data_dir, "oak_train.csv"))
+
+oak_test = test_df.copy()
+oak_test = oak_test[oak_test.taxonID.str.contains(["QU"])]
+oak_test.label = [data_module.species_label_dict[x] for x in oak_test.taxonID]
+oak_test.to_csv(os.path.join(data_module.data_dir, "oak_test.csv"))
+
+data_module.train_ds = data.TreeDataset(os.path.join(data_module.data_dir, "oak_train.csv"), config=config)
+data_module.val_ds = data.TreeDataset(os.path.join(data_module.data_dir, "oak_test.csv"), config=config)
+
+#Load from state dict of previous run
+if config["pretrain_state_dict"]:
+    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=len(data_module.species_label_dict), bands=config["bands"])
+else:
+    model = Hang2020.spectral_network(bands=config["bands"], classes=len(data_module.species_label_dict))
+
+#Loss weight, balanced
+loss_weight = []
+for x in data_module.species_label_dict:
+    loss_weight.append(1/oak_train[oak_train.taxonID==x].shape[0])
+
+loss_weight = np.array(loss_weight/np.max(loss_weight))
+ 
+m5 = main.TreeModel(
+    model=model, 
+    loss_weight=loss_weight,
+    classes=len(data_module.species_label_dict),
+    label_dict=data_module.species_label_dict)
+
+#Create trainer
+lr_monitor = LearningRateMonitor(logging_interval='epoch')
+trainer = Trainer(
+    gpus=data_module.config["gpus"],
+    fast_dev_run=data_module.config["fast_dev_run"],
+    max_epochs=data_module.config["epochs_model3"],
+    accelerator=data_module.config["accelerator"],
+    checkpoint_callback=False,
+    callbacks=[lr_monitor],
+    logger=comet_logger)
+
+with comet_logger.experiment.context_manager("Oak"):
+    trainer.fit(m5, datamodule=data_module)
+
+    #Save model checkpoint
+    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}_OAK.pl".format(comet_logger.experiment.id))
+    results5 = m5.evaluate_crowns(
+        data_module.val_dataloader(),
+        crowns = data_module.crowns,
+        experiment=comet_logger.experiment,
+    )
+    
+    visualize.confusion_matrix(
+        comet_experiment=comet_logger.experiment,
+        results=results5,
+        species_label_dict=data_module.species_label_dict,
+        test_crowns=data_module.crowns,
+        test=oak_test,
+        test_points=data_module.canopy_points,
+        rgb_pool=rgb_pool
+    )  
+    
 #Get joint scores
 new_label_dict = original_label_dict.copy()
 new_label_dict["OTHER"] = len(new_label_dict)
 results = results[results.taxonID=="PIPA2"]
-joint_results = pd.concat([results, results3, results4])
+results4 = results3[~(results3.taxonID=="OAK")]
+joint_results = pd.concat([results, results3, results4, results5])
 joint_results["joint_results.pred_label_top1"] = [new_label_dict[x] for x in joint_results.pred_taxa_top1]
 
 final_micro = torchmetrics.functional.accuracy(

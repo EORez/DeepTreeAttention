@@ -370,30 +370,6 @@ class TreeModel(LightningModule):
         if experiment:
             experiment.log_metrics(species_table.set_index("taxonID").accuracy.to_dict(),prefix="accuracy")
             experiment.log_metrics(species_table.set_index("taxonID").precision.to_dict(),prefix="precision")
-                
-        # Log result by site
-        if experiment:
-            site_data_frame =[]
-            for name, group in results.groupby("siteID"):
-                
-                site_micro = torchmetrics.functional.accuracy(
-                    preds=torch.tensor(group.pred_label_top1.values),
-                    target=torch.tensor(group.label.values),
-                    average="micro")
-                
-                site_macro = torchmetrics.functional.accuracy(
-                    preds=torch.tensor(group.pred_label_top1.values),
-                    target=torch.tensor(group.label.values),
-                    average="macro",
-                    num_classes=self.classes)
-                
-                experiment.log_metric("{}_macro".format(name), site_macro)
-                experiment.log_metric("{}_micro".format(name), site_micro) 
-                
-                row = pd.DataFrame({"Site":[name], "Micro Recall": [site_micro.numpy()], "Macro Recall": [site_macro.numpy()]})
-                site_data_frame.append(row)
-            site_data_frame = pd.concat(site_data_frame)
-            experiment.log_table("site_results.csv", site_data_frame)
         
         return results
             

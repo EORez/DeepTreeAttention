@@ -134,7 +134,7 @@ class TreeModel(LightningModule):
             self.log("Epoch_{}_accuracy".format(key), value)
             
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config["lr"])
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config["lr"], decay=0.001)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                          mode='min',
                                                          factor=0.75,

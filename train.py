@@ -340,9 +340,11 @@ with comet_logger.experiment.context_manager("Broadleaf"):
     )  
         
 #Get joint scores
+new_label_dict = original_label_dict.copy()
+new_label_dict["OTHER"] = len(new_label_dict)
 results = results[results.taxonID=="PIPA2"]
 joint_results = pd.concat([results, results3, results4])
-joint_results["joint_results.pred_label_top1"] = [original_label_dict[x] for x in joint_results.pred_taxa_top1]
+joint_results["joint_results.pred_label_top1"] = [new_label_dict[x] for x in joint_results.pred_taxa_top1]
 
 final_micro = torchmetrics.functional.accuracy(
     preds=torch.tensor(joint_results.pred_label_top1.values),

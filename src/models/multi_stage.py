@@ -1,12 +1,13 @@
 #Multiple stage model
 from src.models import Hang2020
 from src.data import TreeDataset
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 import numpy as np
 from torch.nn import Module
 from torch.nn import functional as F
 from torch import nn
 import torch
+import pandas as pd
 
 class base_model(Module):
     def __init__(self, classes, config):
@@ -25,10 +26,9 @@ class base_model(Module):
         return score 
     
 class MultiStage(LightningModule):
-    def __init__(self, train_df,test_df, levels, config):
+    def __init__(self, train_df,test_df, config):
         super().__init__()        
         # Generate each model
-        self.levels = levels
         self.loss_weights = []
         self.config = config
         self.models = []
@@ -41,7 +41,7 @@ class MultiStage(LightningModule):
         
         for ds in self.train_datasets: 
             labels = [x[2] for x in self.train_datasets[ds]]
-            base = base_model(classes=np.max(labels), config=config)
+            base = base_model(classes=len(np.unique(labels)), config=config)
             loss_weight = []
             for x in np.unique(labels):
                 loss_weight.append(1/np.sum(labels==x))
@@ -143,7 +143,7 @@ class MultiStage(LightningModule):
         level_4_test = TreeDataset(df=level_4_test, config=self.config)
         
         train_datasets = {0:level_0_train, 1:level_1_train,2:level_2_train,3:level_3_train,4:level_4_train}
-        test_datasets = {0:level_0_test, 1:level_1_test,2:level_2_test,3:level_3_test,4:level_4_test}
+        test_datasets = [level_0_test, level_1_test,level_2_test,level_3_test,level_4_test]
         
         return train_datasets, test_datasets
     
@@ -151,7 +151,7 @@ class MultiStage(LightningModule):
         data_loaders = {}
         for ds in self.train_datasets:
             data_loader = torch.utils.data.DataLoader(
-                train_datasets[ds],
+                self.train_datasets[ds],
                 batch_size=self.config["batch_size"],
                 shuffle=True,
                 num_workers=self.config["workers"],
@@ -178,7 +178,7 @@ class MultiStage(LightningModule):
     def configure_optimizers(self):
         """Create a optimizer for each level"""
         optimizers = []
-        for x in range(self.levels):
+        for x, ds in enumerate(self.train_datasets):
             optimizer = torch.optim.Adam(self.models[x].parameters(), lr=self.config["lr"], weight_decay=0.001)
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                              mode='min',
@@ -191,7 +191,7 @@ class MultiStage(LightningModule):
                                                              min_lr=0.0000001,
                                                              eps=1e-08)
             
-            optimizers.append({'optimizer':optimizer, 'lr_scheduler': {"scheduler":scheduler, "monitor":'val_loss'}})
+            optimizers.append({'optimizer':optimizer, 'lr_scheduler': {"scheduler":scheduler, "monitor":'val_loss/dataloader_idx_{}'.format(x)}})
 
         return optimizers     
         
@@ -206,23 +206,58 @@ class MultiStage(LightningModule):
         return loss        
     
     def validation_step(self, batch, batch_idx, dataloader_idx):
-        """Calculate train_df loss 
+        """Calculate val loss 
         """
         individual, inputs, y = batch
         images = inputs["HSI"]  
-        labels = y[dataloader_idx]
         y_hat = self.models[dataloader_idx].forward(images)
-        loss = F.cross_entropy(y_hat, labels, weight=self.loss_weights[dataloader_idx]) 
+        loss = F.cross_entropy(y_hat, y, weight=self.loss_weights[dataloader_idx])   
+        
         self.log("val_loss",loss)
         
         return loss    
     
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        """Calculate train_df loss 
+        """Calculate predictions
         """
         individual, inputs, y = batch
         images = inputs["HSI"]  
-        labels = y[dataloader_idx]
         y_hat = self.models[dataloader_idx].forward(images)
         
-        return individual, y_hat         
+        return individual, y_hat
+    
+    def evaluate_crowns(self):
+        """Post-process the predict method to create metrics"""
+        output = Trainer.predict(dataloaders=self.val_dataloaders())
+        
+        if return_features: 
+            features = []
+            for level in output:
+                features.append(np.vstack(level[1]))             
+            return features
+        
+        for level in output:
+            # Concat batches            
+            individuals = np.concatenate([x[0] for x in level])
+            predictions = np.vstack([x[1] for x in output])
+            #Create dataframe
+            predictions_top1 = np.argmax(predictions, 1)    
+            predictions_top2 = pd.DataFrame(predictions).apply(lambda x: np.argsort(x.values)[-2], axis=1)
+            top1_score = pd.DataFrame(predictions).apply(lambda x: x.sort_values(ascending=False).values[0], axis=1)
+            top2_score = pd.DataFrame(predictions).apply(lambda x: x.sort_values(ascending=False).values[1], axis=1)
+            
+            # Construct a df of predictions
+            df = pd.DataFrame({
+                "pred_label_top1":predictions_top1,
+                "pred_label_top2":predictions_top2,
+                "top1_score":top1_score,
+                "top2_score":top2_score,
+                "individual":individuals
+            })
+            df["pred_taxa_top1"] = df["pred_label_top1"].apply(lambda x: self.index_to_label[x]) 
+            df["pred_taxa_top2"] = df["pred_label_top2"].apply(lambda x: self.index_to_label[x])        
+            if train:
+                df["label"] = labels
+                df["true_taxa"] = df["label"].apply(lambda x: self.index_to_label[x])            
+    
+     

@@ -243,22 +243,22 @@ class TreeDataset(Dataset):
 
     def __len__(self):
         # 0th based index
-        return np.max(self.annotations.index.values)
+        return len(self.annotations.index.values)
 
     def __getitem__(self, index):
         inputs = {}
-        image_path = self.annotations.image_path.loc[index]      
+        image_path = self.annotations.image_path.iloc[index]      
         individual = os.path.basename(image_path.split(".tif")[0])
         if self.config["preload_images"]:
             inputs["HSI"] = self.image_dict[index]
         else:
-            image_basename = self.annotations.image_path.loc[index]  
+            image_basename = self.annotations.image_path.iloc[index]  
             image_path = os.path.join(self.config["crop_dir"],image_basename)                
             image = load_image(image_path, image_size=self.image_size)
             inputs["HSI"] = image
 
         if self.train:           
-            label = torch.tensor(self.annotations.label.loc[index],dtype=torch.long)                    
+            label = torch.tensor(self.annotations.label.iloc[index],dtype=torch.long)                    
             inputs["HSI"] = self.transformer(inputs["HSI"])
 
             return individual, inputs, label
@@ -394,8 +394,6 @@ class TreeData(LightningDataModule):
                 replace=self.config["replace"]
             )
             
-            #hard sampling cutoff
-            annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
             annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:

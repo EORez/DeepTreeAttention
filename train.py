@@ -7,7 +7,7 @@ import numpy as np
 from src import main
 from src import data
 from src import start_cluster
-from src.models import Hang2020
+from src.models import multi_stage
 from src import visualize
 from src import metrics
 import sys
@@ -62,31 +62,7 @@ comet_logger.experiment.log_table("test.csv", data_module.test)
 if not config["use_data_commit"]:
     comet_logger.experiment.log_table("novel_species.csv", data_module.novel)
 
-
-#Load from state dict of previous run
-if config["pretrain_state_dict"]:
-    model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=data_module.num_classes, bands=config["bands"])
-else:
-    model = Hang2020.spectral_network(bands=config["bands"], classes=data_module.num_classes)
-    
-#Load from state dict of previous run
-
-#Loss weight, balanced
-loss_weight = []
-for x in data_module.species_label_dict:
-    loss_weight.append(1/data_module.train[data_module.train.taxonID==x].shape[0])
-    
-loss_weight = np.array(loss_weight/np.max(loss_weight))
-#Provide min value
-loss_weight[loss_weight < 0.5] = 0.5  
-
-comet_logger.experiment.log_parameter("loss_weight", loss_weight)
-
-m = main.TreeModel(
-    model=model, 
-    classes=data_module.num_classes, 
-    loss_weight=loss_weight,
-    label_dict=data_module.species_label_dict)
+m = multi_stage.MultiStage(dm.train, dm.test, config=data_module.config)
 
 #Create trainer
 lr_monitor = LearningRateMonitor(logging_interval='epoch')
@@ -102,6 +78,7 @@ trainer = Trainer(
 trainer.fit(m, datamodule=data_module)
 #Save model checkpoint
 trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
+
 results = m.evaluate_crowns(
     data_module.val_dataloader(),
     crowns = data_module.crowns,

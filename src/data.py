@@ -217,14 +217,20 @@ class TreeDataset(Dataset):
     Args:
        csv_file: path to csv file with image_path and label
     """
-    def __init__(self, csv_file, config=None, train=True, HSI=True, metadata=False):
-        self.annotations = pd.read_csv(csv_file)
+    def __init__(self, csv_file=None, df=None, config=None, train=True, levels=5):
+        if csv_file:
+            self.annotations = pd.read_csv(csv_file)
+        else:
+            if df is None:
+                raise ValueError("Either csv_file or pandas df= needs to be specified")
+            self.annotations = df
+        
+        self.annotations = self.annotations[~(self.annotations.label.isnull())].reset_index(drop=True)
         self.train = train
-        self.HSI = HSI
-        self.metadata = metadata
         self.config = config         
         self.image_size = config["image_size"]
-
+        self.levels = levels
+        
         # Create augmentor
         self.transformer = augmentation.train_augmentation(image_size=self.image_size)
 
@@ -237,46 +243,27 @@ class TreeDataset(Dataset):
 
     def __len__(self):
         # 0th based index
-        return self.annotations.shape[0]
+        return np.max(self.annotations.index.values)
 
     def __getitem__(self, index):
         inputs = {}
         image_path = self.annotations.image_path.loc[index]      
         individual = os.path.basename(image_path.split(".tif")[0])
-        if self.HSI:
-            if self.config["preload_images"]:
-                inputs["HSI"] = self.image_dict[index]
-            else:
-                image_basename = self.annotations.image_path.loc[index]  
-                image_path = os.path.join(self.config["crop_dir"],image_basename)                
-                image = load_image(image_path, image_size=self.image_size)
-                inputs["HSI"] = image
+        if self.config["preload_images"]:
+            inputs["HSI"] = self.image_dict[index]
+        else:
+            image_basename = self.annotations.image_path.loc[index]  
+            image_path = os.path.join(self.config["crop_dir"],image_basename)                
+            image = load_image(image_path, image_size=self.image_size)
+            inputs["HSI"] = image
 
-        if self.metadata:
-            site = self.annotations.site.loc[index]  
-            site = torch.tensor(site, dtype=torch.int)
-            inputs["site"] = site
-
-        if self.train:
-            label = self.annotations.label.loc[index]
-            label = torch.tensor(label, dtype=torch.long)
-
-            if self.HSI:
-                inputs["HSI"] = self.transformer(inputs["HSI"])
+        if self.train:           
+            label = torch.tensor(self.annotations.label.loc[index],dtype=torch.long)                    
+            inputs["HSI"] = self.transformer(inputs["HSI"])
 
             return individual, inputs, label
         else:
             return individual, inputs
-
-def filter_dead_annotations(crowns, config):
-    """Given a set of annotations, predict whether RGB is dead
-    Args:
-        annotations: must contain xmin, xmax, ymin, ymax and image path fields"""
-    ds = dead.utm_dataset(crowns, config=config)
-    dead_model = dead.AliveDead.load_from_checkpoint(config["dead_model"], config=config)    
-    label, score = dead.predict_dead_dataloader(dead_model=dead_model, dataset=ds, config=config)
-    
-    return label, score
     
 class TreeData(LightningDataModule):
     """
@@ -284,7 +271,7 @@ class TreeData(LightningDataModule):
     The module checkpoints the different phases of setup, if one stage failed it will restart from that stage. 
     Use regenerate=True to override this behavior in setup()
     """
-    def __init__(self, csv_file, config, HSI=True, metadata=False, client = None, data_dir=None, comet_logger=None, debug=False):
+    def __init__(self, csv_file, config, HSI=True, metadata=False, client = None, data_dir=None, comet_logger=None, debug=False, levels=None):
         """
         Args:
             config: optional config file to override
@@ -299,6 +286,7 @@ class TreeData(LightningDataModule):
         self.metadata = metadata
         self.comet_logger = comet_logger
         self.debug = debug 
+        self.levels = levels
 
         # Default training location
         self.client = client
@@ -460,9 +448,6 @@ class TreeData(LightningDataModule):
             self.test["label"] = self.test.taxonID.apply(lambda x: self.species_label_dict[x])
             self.test["site"] = self.test.siteID.apply(lambda x: self.site_label_dict[x])
             
-            self.train.to_csv("{}/train.csv".format(self.data_dir), index=False)            
-            self.test.to_csv("{}/test.csv".format(self.data_dir), index=False)
-            
             print("There are {} records for {} species for {} sites in filtered train".format(
                 self.train.shape[0],
                 len(self.train.label.unique()),
@@ -479,15 +464,11 @@ class TreeData(LightningDataModule):
             self.train_ds = TreeDataset(
                 csv_file = "{}/train.csv".format(self.data_dir),
                 config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
             )
             
             self.val_ds = TreeDataset(
                 csv_file = "{}/test.csv".format(self.data_dir),
                 config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
             )
              
         else:
@@ -521,38 +502,3 @@ class TreeData(LightningDataModule):
             self.num_sites = len(self.site_label_dict)                   
             
             self.label_to_taxonID = {v: k  for k, v in self.species_label_dict.items()}
-            
-            #Create dataloaders
-            self.train_ds = TreeDataset(
-                csv_file = "{}/train.csv".format(self.data_dir),
-                config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
-            )
-    
-            self.val_ds = TreeDataset(
-                csv_file = "{}/test.csv".format(self.data_dir),
-                config=self.config,
-                HSI=self.HSI,
-                metadata=self.metadata
-            )            
-
-    def train_dataloader(self):
-        data_loader = torch.utils.data.DataLoader(
-            self.train_ds,
-            batch_size=self.config["batch_size"],
-            shuffle=True,
-            num_workers=self.config["workers"],
-        )
-        
-        return data_loader
-    
-    def val_dataloader(self):
-        data_loader = torch.utils.data.DataLoader(
-            self.val_ds,
-            batch_size=self.config["batch_size"],
-            shuffle=False,
-            num_workers=self.config["workers"],
-        )
-        
-        return data_loader

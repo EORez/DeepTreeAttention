@@ -22,7 +22,7 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 def pytest_sessionstart():
     # prepare something ahead of all tests
     m = deepforest()
-    m.use_release()    
+    m.use_release(check_release=False)    
 
 @pytest.fixture(scope="session")
 def ROOT():
@@ -65,8 +65,8 @@ def config(ROOT):
     config["HSI_sensor_pool"] = "{}/tests/data/*.tif".format(ROOT)
     config["min_train_samples"] = 1
     config["min_test_samples"] = 1
-    config["crop_dir"] = "{}/tests/data/crops/".format(ROOT)
-    config["bands"] = 3
+    config["crop_dir"] = "{}/tests/data/2fc85646a96f4570942783aa8897bdae/".format(ROOT)
+    config["bands"] = 349
     config["classes"] = 3
     config["top_k"] = 1
     config["convert_h5"] = False
@@ -75,17 +75,20 @@ def config(ROOT):
     config["dead_model"] = None
     config["dead_threshold"] = 0.95
     config["megaplot_dir"] = None
-    config["use_data_commit"] = None
+    config["use_data_commit"] = "2fc85646a96f4570942783aa8897bdae"
     config["dead"]["epochs"] = 1
+    config["pretrain_state_dict"] = None
+    config["batch_size"] = 3
+    config["preload_images"] = False
+    
     
     return config
 
 #Data module
 @pytest.fixture(scope="session")
 def dm(config, ROOT):
-    csv_file = "{}/tests/data/sample_neon.csv".format(ROOT)               
-    dm = data.TreeData(config=config, csv_file=csv_file, data_dir="{}/tests/data".format(ROOT), debug=True, metadata=True) 
-    dm.setup()    
+    dm = data.TreeData(config=config, csv_file=None, data_dir="{}/tests/data/2fc85646a96f4570942783aa8897bdae".format(ROOT), debug=True) 
+    dm.setup()  
     
     return dm
 

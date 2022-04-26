@@ -80,16 +80,16 @@ trainer.fit(m, datamodule=data_module)
 trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
 
 output = trainer.predict(m, dataloaders=m.val_dataloader())
-results = m.evaluate_crowns(
-    predictions=output
-    crowns = data_module.crowns,
-    experiment=comet_logger.experiment,
+results = m.gather_predictions(predict_df=output, crowns=data_module.crowns)
+ensemble_df = m.ensemble(results)
+results = m.evaluation_scores(
+    ensemble_df,
+    experiment=comet_logger.experiment
 )
-rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 
 #Visualizations
+rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 visualize.plot_spectra(results, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
-
 visualize.rgb_plots(
     df=results,
     config=config,

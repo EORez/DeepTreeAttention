@@ -229,7 +229,7 @@ class MultiStage(LightningModule):
         
         return individual, y_hat
     
-    def evaluate_crowns(self, predict_df, crowns, return_features=False):
+    def gather_predictions(self, predict_df, crowns, return_features=False):
         """Post-process the predict method to create metrics"""
         
         if return_features: 

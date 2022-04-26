@@ -25,9 +25,11 @@ def test_predict(config, dm):
     trainer = Trainer(fast_dev_run=True)
     predictions = trainer.predict(m, dataloaders=m.val_dataloader())
 
-def test_evaluate_crowns(config, dm, comet_logger):
+def test_gather_predictions(config, dm, comet_logger):
     m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.test, config=config)
     trainer = Trainer(fast_dev_run=True)
     output = trainer.predict(m, dataloaders=m.val_dataloader())
-    predictions = m.evaluate_crowns(predict_df=output, crowns=dm.crowns)    
+    predictions = m.gather_predictions(predict_df=output, crowns=dm.crowns)    
     predictions.shape[0] == config["batch_size"]
+    ensemble_df = m.ensemble(predictions)
+    m.evaluation_scores(ensemble_df, experiment=comet_logger.experiment)

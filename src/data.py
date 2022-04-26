@@ -458,17 +458,6 @@ class TreeData(LightningDataModule):
                 len(self.test.site.unique()))
             )
              
-            #Create dataloaders
-            self.train_ds = TreeDataset(
-                csv_file = "{}/train.csv".format(self.data_dir),
-                config=self.config,
-            )
-            
-            self.val_ds = TreeDataset(
-                csv_file = "{}/test.csv".format(self.data_dir),
-                config=self.config,
-            )
-             
         else:
             print("Loading previous run")            
             self.train = pd.read_csv("{}/train.csv".format(self.data_dir))

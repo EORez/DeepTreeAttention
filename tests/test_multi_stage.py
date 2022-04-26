@@ -22,10 +22,12 @@ def test_fit(config, dm):
     
 def test_predict(config, dm):
     m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.train, config=config)
-    trainer = Trainer(fast_dev_run=True, limit_predict_batches=2)
+    trainer = Trainer(fast_dev_run=True)
     predictions = trainer.predict(m, dataloaders=m.val_dataloader())
 
 def test_evaluate_crowns(config, dm, comet_logger):
-    m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.train, config=config)
+    m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.test, config=config)
     trainer = Trainer(fast_dev_run=True)
-    predictions = trainer.predict(m, dataloaders=m.val_dataloader())    
+    output = trainer.predict(m, dataloaders=m.val_dataloader())
+    predictions = m.evaluate_crowns(predict_df=output, crowns=dm.crowns)    
+    predictions.shape[0] == config["batch_size"]

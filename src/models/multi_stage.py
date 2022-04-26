@@ -1,13 +1,16 @@
 #Multiple stage model
+from functools import reduce
+import geopandas as gpd
 from src.models import Hang2020
 from src.data import TreeDataset
 from pytorch_lightning import LightningModule, Trainer
+import pandas as pd
 import numpy as np
 from torch.nn import Module
 from torch.nn import functional as F
 from torch import nn
+import torchmetrics
 import torch
-import pandas as pd
 
 class base_model(Module):
     def __init__(self, classes, config):
@@ -226,20 +229,21 @@ class MultiStage(LightningModule):
         
         return individual, y_hat
     
-    def evaluate_crowns(self):
+    def evaluate_crowns(self, predict_df, crowns, return_features=False):
         """Post-process the predict method to create metrics"""
-        output = Trainer.predict(dataloaders=self.val_dataloaders())
         
         if return_features: 
             features = []
-            for level in output:
+            for level in predict_df:
                 features.append(np.vstack(level[1]))             
             return features
         
-        for level in output:
+        level_results = []
+        for index, level in enumerate(predict_df):
             # Concat batches            
-            individuals = np.concatenate([x[0] for x in level])
-            predictions = np.vstack([x[1] for x in output])
+            individuals = np.concatenate([y[0] for y in level for x in level])
+            predictions = np.vstack([y[1] for y in level for x in level])
+            
             #Create dataframe
             predictions_top1 = np.argmax(predictions, 1)    
             predictions_top2 = pd.DataFrame(predictions).apply(lambda x: np.argsort(x.values)[-2], axis=1)
@@ -248,16 +252,90 @@ class MultiStage(LightningModule):
             
             # Construct a df of predictions
             df = pd.DataFrame({
-                "pred_label_top1":predictions_top1,
-                "pred_label_top2":predictions_top2,
-                "top1_score":top1_score,
-                "top2_score":top2_score,
+                "pred_label_top1_level_{}".format(index):predictions_top1,
+                "pred_label_top2_level_{}".format(index):predictions_top2,
+                "top1_score_level_{}".format(index):top1_score,
+                "top2_score_level_{}".format(index):top2_score,
                 "individual":individuals
             })
-            df["pred_taxa_top1"] = df["pred_label_top1"].apply(lambda x: self.index_to_label[x]) 
-            df["pred_taxa_top2"] = df["pred_label_top2"].apply(lambda x: self.index_to_label[x])        
-            if train:
-                df["label"] = labels
-                df["true_taxa"] = df["label"].apply(lambda x: self.index_to_label[x])            
+            df["pred_taxa_top1_level_{}".format(index)] = df["pred_label_top1_level_{}".format(index)].apply(lambda x: self.label_to_taxonIDs[index][x]) 
+            df["pred_taxa_top2_level_{}".format(index)] = df["pred_label_top2_level_{}".format(index)].apply(lambda x: self.label_to_taxonIDs[index][x])        
+            level_results.append(df)
+        
+        results = reduce(lambda  left,right: pd.merge(left,right,on=['individual'],
+                                                        how='outer'), level_results)        
+        results = crowns[["geometry","individual","taxonID","label"]].merge(results, on="individual")
+        results = gpd.GeoDataFrame(results, geometry="geometry")
+            
+        return results
     
-     
+    def ensemble(self, results):
+        """Given a multi-level model, create a final output prediction and score"""
+        results.loc[results.pred_taxa_top1_level_0 == "PIPA2","ensTaxonID"] = "PIPA2"
+        results.loc[results.pred_taxa_top1_level_0 == "PIPA2","ens_label"] = results[results.pred_taxa_top1_level_0 == "PIPA2"].pred_label_top1_level_0
+        results.loc[results.pred_taxa_top1_level_0 == "PIPA2","ens_score"] = results[results.pred_taxa_top1_level_0 == "PIPA2"].top1_score_level_0
+        
+        results.loc[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"]),"ensTaxonID"] = results[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"])].pred_taxa_top1_level_2
+        results.loc[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"]),"ens_label"] = results[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"])].pred_label_top1_level_2
+        results.loc[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"]),"ens_score"] = results[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"])].top1_score_level_2
+
+        results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ensembleTaxonID"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].pred_taxa_top1_level_3
+        results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ens_label"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].pred_label_top1_level_3
+        results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ens_score"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].top1_score_level_3
+        
+        
+        results.loc[~results.pred_taxa_top1_level_4.isnull(),"ensembleTaxonID"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].pred_taxa_top1_level_4
+        results.loc[~results.pred_taxa_top1_level_4.isnull(),"ens_label"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].pred_label_top1_level_4
+        results.loc[~results.pred_taxa_top1_level_4.isnull(),"ens_score"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].top1_score_level_4
+    
+        return results[["geometry","individual","ens_score","ensembleTaxonID","ens_label","label","taxonID"]]
+    
+    def evaluation_scores(self, ensemble_df, experiment):
+        #Aggregate to a final prediction
+        
+        # Log results by species
+        taxon_accuracy = torchmetrics.functional.accuracy(
+            preds=torch.tensor(ensemble_df.ens_label.values),
+            target=torch.tensor(ensemble_df.label.values), 
+            average="none", 
+            num_classes=self.classes
+        )
+        taxon_precision = torchmetrics.functional.precision(
+            preds=torch.tensor(ensemble_df.ens_label.values),
+            target=torch.tensor(ensemble_df.label.values),
+            average="none",
+            num_classes=self.classes
+        )
+        species_table = pd.DataFrame(
+            {"taxonID":self.label_to_index.keys(),
+             "accuracy":taxon_accuracy,
+             "precision":taxon_precision
+             })
+        
+        if experiment:
+            experiment.log_metrics(species_table.set_index("taxonID").accuracy.to_dict(),prefix="accuracy")
+            experiment.log_metrics(species_table.set_index("taxonID").precision.to_dict(),prefix="precision")
+                
+        # Log result by site
+        if experiment:
+            site_data_frame =[]
+            for name, group in results.groupby("siteID"):
+                site_micro = torchmetrics.functional.accuracy(
+                    preds=torch.tensor(group.ens_label.values),
+                    target=torch.tensor(group.label.values),
+                    average="micro")
+                
+                site_macro = torchmetrics.functional.accuracy(
+                    preds=torch.tensor(group.ens_label.values),
+                    target=torch.tensor(group.label.values),
+                    average="macro",
+                    num_classes=self.classes)
+                
+                experiment.log_metric("{}_macro".format(name), site_macro)
+                experiment.log_metric("{}_micro".format(name), site_micro) 
+                
+                row = pd.DataFrame({"Site":[name], "Micro Recall": [site_micro.numpy()], "Macro Recall": [site_macro.numpy()]})
+                site_data_frame.append(row)
+            site_data_frame = pd.concat(site_data_frame)
+            experiment.log_table("site_results.csv", site_data_frame)        
+        

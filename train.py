@@ -10,9 +10,9 @@ from src import start_cluster
 from src.models import multi_stage
 from src import visualize
 from src import metrics
+import subprocess
 import sys
 from pytorch_lightning import Trainer
-import subprocess
 from pytorch_lightning.loggers import CometLogger
 from pytorch_lightning.callbacks import LearningRateMonitor
 import pandas as pd
@@ -79,8 +79,9 @@ trainer.fit(m, datamodule=data_module)
 #Save model checkpoint
 trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
 
+output = trainer.predict(m, dataloaders=m.val_dataloader())
 results = m.evaluate_crowns(
-    data_module.val_dataloader(),
+    predictions=output
     crowns = data_module.crowns,
     experiment=comet_logger.experiment,
 )
@@ -88,6 +89,7 @@ rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 
 #Visualizations
 visualize.plot_spectra(results, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
+
 visualize.rgb_plots(
     df=results,
     config=config,
@@ -95,6 +97,7 @@ visualize.rgb_plots(
     test_points=data_module.canopy_points,
     plot_n_individuals=config["plot_n_individuals"],
     experiment=comet_logger.experiment)
+
 visualize.confusion_matrix(
     comet_experiment=comet_logger.experiment,
     results=results,

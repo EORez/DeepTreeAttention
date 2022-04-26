@@ -35,7 +35,9 @@ class MultiStage(LightningModule):
         self.loss_weights = []
         self.config = config
         self.models = []
-        self.species_label_dict = train_df.taxonID.drop_duplicates().reset_index().to_dict()
+        self.species_label_dict = train_df[["taxonID","label"]].drop_duplicates().set_index("label").to_dict()["taxonID"]
+        self.index_to_label = {v:k for k,v in self.species_label_dict.items()}
+
         self.level_label_dicts = {}     
         self.label_to_taxonIDs = {}    
         self.train_df = train_df
@@ -264,7 +266,8 @@ class MultiStage(LightningModule):
         
         results = reduce(lambda  left,right: pd.merge(left,right,on=['individual'],
                                                         how='outer'), level_results)        
-        results = crowns[["geometry","individual","taxonID","label"]].merge(results, on="individual")
+        results = crowns[["geometry","individual","taxonID"]].merge(results, on="individual")
+        results["label"] = results["taxonID"].apply(lambda x: self.index_to_label[x])  
         results = gpd.GeoDataFrame(results, geometry="geometry")
             
         return results
@@ -298,13 +301,13 @@ class MultiStage(LightningModule):
             preds=torch.tensor(ensemble_df.ens_label.values),
             target=torch.tensor(ensemble_df.label.values), 
             average="none", 
-            num_classes=self.classes
+            num_classes=len(self.species_label_dict)
         )
         taxon_precision = torchmetrics.functional.precision(
             preds=torch.tensor(ensemble_df.ens_label.values),
             target=torch.tensor(ensemble_df.label.values),
             average="none",
-            num_classes=self.classes
+            num_classes=len(self.species_label_dict)
         )
         species_table = pd.DataFrame(
             {"taxonID":self.label_to_index.keys(),
@@ -319,7 +322,7 @@ class MultiStage(LightningModule):
         # Log result by site
         if experiment:
             site_data_frame =[]
-            for name, group in results.groupby("siteID"):
+            for name, group in ensemble_df.groupby("siteID"):
                 site_micro = torchmetrics.functional.accuracy(
                     preds=torch.tensor(group.ens_label.values),
                     target=torch.tensor(group.label.values),

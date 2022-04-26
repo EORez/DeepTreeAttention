@@ -342,7 +342,6 @@ class TreeData(LightningDataModule):
                 
                 self.canopy_points = df
                 self.canopy_points.to_file("{}/canopy_points.shp".format(self.data_dir))
-                
 
                 if self.comet_logger:
                     self.comet_logger.experiment.log_parameter("Species after CHM filter", len(df.taxonID.unique()))

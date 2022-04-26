@@ -34,7 +34,7 @@ class MultiStage(LightningModule):
         # Generate each model
         self.loss_weights = []
         self.config = config
-        self.models = []
+        self.models = nn.ModuleList()
         self.species_label_dict = train_df[["taxonID","label"]].drop_duplicates().set_index("label").to_dict()["taxonID"]
         self.index_to_label = {v:k for k,v in self.species_label_dict.items()}
 
@@ -50,9 +50,8 @@ class MultiStage(LightningModule):
             loss_weight = []
             for x in np.unique(labels):
                 loss_weight.append(1/np.sum(labels==x))
-        
+
             loss_weight = np.array(loss_weight/np.max(loss_weight))
-            
             if torch.cuda.is_available():
                 loss_weight = torch.tensor(loss_weight, device="cuda", dtype=torch.float)
             else:
@@ -233,7 +232,6 @@ class MultiStage(LightningModule):
     
     def gather_predictions(self, predict_df, crowns, return_features=False):
         """Post-process the predict method to create metrics"""
-        
         if return_features: 
             features = []
             for level in predict_df:
@@ -295,8 +293,6 @@ class MultiStage(LightningModule):
     
     def evaluation_scores(self, ensemble_df, experiment):
         #Aggregate to a final prediction
-        
-        # Log results by species
         taxon_accuracy = torchmetrics.functional.accuracy(
             preds=torch.tensor(ensemble_df.ens_label.values),
             target=torch.tensor(ensemble_df.label.values), 

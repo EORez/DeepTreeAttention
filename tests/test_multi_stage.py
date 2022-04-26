@@ -32,4 +32,3 @@ def test_gather_predictions(config, dm, comet_logger):
     predictions = m.gather_predictions(predict_df=output, crowns=dm.crowns)    
     predictions.shape[0] == config["batch_size"]
     ensemble_df = m.ensemble(predictions)
-    m.evaluation_scores(ensemble_df, experiment=comet_logger.experiment)

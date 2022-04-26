@@ -29,7 +29,7 @@ class base_model(Module):
         return score 
     
 class MultiStage(LightningModule):
-    def __init__(self, train_df,test_df, config):
+    def __init__(self, train_df,test_df, crowns, config):
         super().__init__()        
         # Generate each model
         self.loss_weights = []
@@ -37,7 +37,7 @@ class MultiStage(LightningModule):
         self.models = nn.ModuleList()
         self.species_label_dict = train_df[["taxonID","label"]].drop_duplicates().set_index("label").to_dict()["taxonID"]
         self.index_to_label = {v:k for k,v in self.species_label_dict.items()}
-
+        self.crowns = crowns
         self.level_label_dicts = {}     
         self.label_to_taxonIDs = {}    
         self.train_df = train_df
@@ -219,7 +219,7 @@ class MultiStage(LightningModule):
         
         self.log("val_loss",loss)
         
-        return loss    
+        return individual, y_hat  
     
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         """Calculate predictions
@@ -284,13 +284,51 @@ class MultiStage(LightningModule):
         results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ens_label"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].pred_label_top1_level_3
         results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ens_score"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].top1_score_level_3
         
-        
         results.loc[~results.pred_taxa_top1_level_4.isnull(),"ensembleTaxonID"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].pred_taxa_top1_level_4
         results.loc[~results.pred_taxa_top1_level_4.isnull(),"ens_label"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].pred_label_top1_level_4
         results.loc[~results.pred_taxa_top1_level_4.isnull(),"ens_score"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].top1_score_level_4
     
         return results[["geometry","individual","ens_score","ensembleTaxonID","ens_label","label","taxonID"]]
     
+    def validation_epoch_end(self, output):
+        results = self.gather_predictions(output, crowns=self.crowns)
+        ensemble_df = self.ensemble(results)
+        final_micro = torchmetrics.functional.accuracy(
+            preds=torch.tensor(results.ensemble_df.ens_label.values),
+            target=torch.tensor(results.label.values),
+            average="micro")
+        
+        final_macro = torchmetrics.functional.accuracy(
+            preds=torch.tensor(results.ens_label.values),
+            target=torch.tensor(results.label.values),
+            average="macro",
+            num_classes=self.classes)
+        
+        self.log("Epoch Micro Accuracy", final_micro)
+        self.log("Epoch Macro Accuracy", final_macro)
+        
+        # Log results by species
+        taxon_accuracy = torchmetrics.functional.accuracy(
+            preds=torch.tensor(results.ens_label.values),
+            target=torch.tensor(results.label.values), 
+            average="none", 
+            num_classes=self.classes
+        )
+        taxon_precision = torchmetrics.functional.precision(
+            preds=torch.tensor(results.ens_label.values),
+            target=torch.tensor(results.label.values),
+            average="none",
+            num_classes=self.classes
+        )
+        species_table = pd.DataFrame(
+            {"taxonID":self.label_to_index.keys(),
+             "accuracy":taxon_accuracy,
+             "precision":taxon_precision
+             })
+        
+        for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
+            self.log("Epoch_{}_accuracy".format(key), value)
+            
     def evaluation_scores(self, ensemble_df, experiment):
         #Aggregate to a final prediction
         taxon_accuracy = torchmetrics.functional.accuracy(

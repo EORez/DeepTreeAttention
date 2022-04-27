@@ -242,7 +242,7 @@ class MultiStage(LightningModule):
         for index, level in enumerate(predict_df):
             # Concat batches            
             individuals = np.concatenate([y[0] for y in level for x in level])
-            predictions = np.vstack([y[1] for y in level for x in level])
+            predictions = np.vstack([y[1].cpu() for y in level for x in level])
             
             #Create dataframe
             predictions_top1 = np.argmax(predictions, 1)    

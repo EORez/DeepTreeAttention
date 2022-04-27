@@ -80,6 +80,7 @@ def config(ROOT):
     config["pretrain_state_dict"] = None
     config["batch_size"] = 3
     config["preload_images"] = False
+    config["epochs"] = 1
     
     
     return config

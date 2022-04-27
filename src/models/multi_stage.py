@@ -290,8 +290,7 @@ class MultiStage(LightningModule):
         return results[["geometry","individual","ens_score","ensembleTaxonID","ens_label","label","taxonID"]]
     
     def validation_epoch_end(self, outputs):
-        predict_df = self.trainer.predict(dataloaders=self.val_dataloader())
-        results = self.gather_predictions(predict_df, crowns=self.crowns)
+        results = self.gather_predictions(outputs, crowns=self.crowns)
         ensemble_df = self.ensemble(results)
         final_micro = torchmetrics.functional.accuracy(
             preds=torch.tensor(ensemble_df.ens_label.values),

@@ -250,16 +250,6 @@ class MultiStage(LightningModule):
             top1_score = pd.DataFrame(predictions).apply(lambda x: x.sort_values(ascending=False).values[0], axis=1)
             #top2_score = pd.DataFrame(predictions).apply(lambda x: x.sort_values(ascending=False).values[1], axis=1)
             
-            # Construct a df of predictions
-            print("length of predictions is {}".format(len(predictions_top1)))
-            print(predictions_top1[:2])
-            
-            print("Length of scores {}".format(len(top1_score)))
-            print(top1_score[:2])
-            
-            print("length individuals {}".format(len(individuals)))
-            print(individuals[:2])
-            
             df = pd.DataFrame({
                 "pred_label_top1_level_{}".format(index):predictions_top1,
                 #"pred_label_top2_level_{}".format(index):predictions_top2,
@@ -299,44 +289,45 @@ class MultiStage(LightningModule):
     
         return results[["geometry","individual","ens_score","ensembleTaxonID","ens_label","label","taxonID"]]
     
-    #def validation_epoch_end(self, output):
-        #results = self.gather_predictions(output, crowns=self.crowns)
-        #ensemble_df = self.ensemble(results)
-        #final_micro = torchmetrics.functional.accuracy(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values),
-            #average="micro")
+    def validation_epoch_end(self):
+        output = self.trainer.predict(self, self.val_dataloader())
+        results = self.gather_predictions(output, crowns=self.crowns)
+        ensemble_df = self.ensemble(results)
+        final_micro = torchmetrics.functional.accuracy(
+            preds=torch.tensor(ensemble_df.ens_label.values),
+            target=torch.tensor(ensemble_df.label.values),
+            average="micro")
         
-        #final_macro = torchmetrics.functional.accuracy(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values),
-            #average="macro",
-            #num_classes=self.classes)
+        final_macro = torchmetrics.functional.accuracy(
+            preds=torch.tensor(ensemble_df.ens_label.values),
+            target=torch.tensor(ensemble_df.label.values),
+            average="macro",
+            num_classes=self.classes)
         
-        #self.log("Epoch Micro Accuracy", final_micro)
-        #self.log("Epoch Macro Accuracy", final_macro)
+        self.log("Epoch Micro Accuracy", final_micro)
+        self.log("Epoch Macro Accuracy", final_macro)
         
-        ## Log results by species
-        #taxon_accuracy = torchmetrics.functional.accuracy(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values), 
-            #average="none", 
-            #num_classes=self.classes
-        #)
-        #taxon_precision = torchmetrics.functional.precision(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values),
-            #average="none",
-            #num_classes=self.classes
-        #)
-        #species_table = pd.DataFrame(
-            #{"taxonID":self.label_to_index.keys(),
-             #"accuracy":taxon_accuracy,
-             #"precision":taxon_precision
-             #})
+        # Log results by species
+        taxon_accuracy = torchmetrics.functional.accuracy(
+            preds=torch.tensor(ensemble_df.ens_label.values),
+            target=torch.tensor(ensemble_df.label.values), 
+            average="none", 
+            num_classes=self.classes
+        )
+        taxon_precision = torchmetrics.functional.precision(
+            preds=torch.tensor(ensemble_df.ens_label.values),
+            target=torch.tensor(ensemble_df.label.values),
+            average="none",
+            num_classes=self.classes
+        )
+        species_table = pd.DataFrame(
+            {"taxonID":self.label_to_index.keys(),
+             "accuracy":taxon_accuracy,
+             "precision":taxon_precision
+             })
         
-        #for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
-            #self.log("Epoch_{}_accuracy".format(key), value)
+        for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
+            self.log("Epoch_{}_accuracy".format(key), value)
             
     def evaluation_scores(self, ensemble_df, experiment):
         #Aggregate to a final prediction

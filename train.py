@@ -143,4 +143,5 @@ for x in range(5):
     micro.append(comet_logger.experiment.get_metric("OSBS_micro"))
     micro.append(comet_logger.experiment.get_metric("OSBS_macro"))
     
-pd.DataFrame({"micro":micro,"macro":macro,"train":"IFAS",test="NEON"}).to_csv("results/IFAS_predicts_NEON_OSBS.csv")
+df = pd.DataFrame({"micro":micro,"macro":macro,"train":"IFAS","test":"NEON"})
+df.to_csv("results/IFAS_predicts_NEON_OSBS.csv")

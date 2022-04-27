@@ -24,6 +24,8 @@ git_commit=sys.argv[2]
 
 macro = []
 micro = []
+
+client = start_cluster.start(cpus=50, mem_size="4GB")    
 for x in range(5):
     #Create datamodule
     config = data.read_config("config.yml")
@@ -36,7 +38,6 @@ for x in range(5):
     else:
         crop_dir = os.path.join(config["data_dir"], comet_logger.experiment.get_key())
         os.mkdir(crop_dir)
-        client = start_cluster.start(cpus=50, mem_size="4GB")    
         config["crop_dir"] = crop_dir
     
     comet_logger.experiment.log_parameter("git branch",git_branch)

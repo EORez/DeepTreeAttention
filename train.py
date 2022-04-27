@@ -25,7 +25,7 @@ git_commit=sys.argv[2]
 macro = []
 micro = []
 
-client = start_cluster.start(cpus=50, mem_size="4GB")    
+client = start_cluster.start(cpus=5, mem_size="4GB")    
 for x in range(5):
     #Create datamodule
     config = data.read_config("config.yml")

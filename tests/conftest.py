@@ -78,7 +78,7 @@ def config(ROOT):
     config["use_data_commit"] = "2fc85646a96f4570942783aa8897bdae"
     config["dead"]["epochs"] = 1
     config["pretrain_state_dict"] = None
-    config["batch_size"] = 3
+    config["batch_size"] = 2
     config["preload_images"] = False
     config["epochs"] = 1
     

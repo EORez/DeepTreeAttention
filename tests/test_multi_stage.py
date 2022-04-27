@@ -22,13 +22,14 @@ def test_fit(config, dm):
     
 def test_predict(config, dm):
     m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.train, crowns=dm.crowns, config=config)
-    trainer = Trainer(fast_dev_run=True)
+    trainer = Trainer(fast_dev_run=False)
     predictions = trainer.predict(m, dataloaders=m.val_dataloader())
 
-def test_gather_predictions(config, dm):
+def test_gather_predictions(config, dm, comet_logger):
     m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.test, crowns=dm.crowns, config=config)
-    trainer = Trainer(fast_dev_run=True)
+    trainer = Trainer(fast_dev_run=False)
     output = trainer.predict(m, dataloaders=m.val_dataloader())
     predictions = m.gather_predictions(predict_df=output, crowns=dm.crowns)    
     predictions.shape[0] == config["batch_size"]
     ensemble_df = m.ensemble(predictions)
+    m.evaluation_scores(ensemble_df, experiment=comet_logger.experiment)

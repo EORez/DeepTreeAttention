@@ -79,7 +79,7 @@ trainer.fit(m)
 #Save model checkpoint
 trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
 
-output = trainer.predict(m, dataloaders=m.val_dataloader(), num_sanity_val_steps=0)
+output = trainer.predict(m, dataloaders=m.val_dataloader())
 results = m.gather_predictions(predict_df=output, crowns=data_module.crowns)
 ensemble_df = m.ensemble(results)
 results = m.evaluation_scores(

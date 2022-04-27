@@ -251,6 +251,15 @@ class MultiStage(LightningModule):
             #top2_score = pd.DataFrame(predictions).apply(lambda x: x.sort_values(ascending=False).values[1], axis=1)
             
             # Construct a df of predictions
+            print("length of predictions is {}".format(len(predictions_top1)))
+            print(predictions_top1[:2])
+            
+            print("Length of scores".format(len(top1_score)))
+            print(top1_score[:2])
+            
+            print("length individuals {}".format(individuals))
+            print(individuals[:2])
+            
             df = pd.DataFrame({
                 "pred_label_top1_level_{}".format(index):predictions_top1,
                 #"pred_label_top2_level_{}".format(index):predictions_top2,

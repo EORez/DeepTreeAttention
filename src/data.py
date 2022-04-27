@@ -121,7 +121,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
 
         return train, test
     else:
-        plotIDs = shp[shp.siteID=="OSBS"].plotID.unique()
+        plotIDs = shp[shp.siteID=="BART"].plotID.unique()
 
     np.random.shuffle(plotIDs)
     species_to_sample = shp.taxonID.unique()
@@ -139,6 +139,9 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
                 
     test = shp[shp.plotID.isin(test_plots)]
     train = shp[~shp.plotID.isin(test.plotID.unique())]
+    
+    #HARV test data
+    train = train[train.siteID=="HARV"]
 
     # Remove fixed boxes from test
     test = test.loc[~test["box_id"].astype(str).str.contains("fixed").fillna(False)]    
@@ -319,7 +322,10 @@ class TreeData(LightningDataModule):
                     
                 # Convert raw neon data to x,y tree locatins
                 df = filter_data(self.csv_file, config=self.config)
-                    
+                
+                #Only HARV and BART
+                df = df[df.plotID.isin(["BART","HARV"])]
+                
                 # Load any megaplot data
                 if not self.config["megaplot_dir"] is None:
                     megaplot_data = megaplot.load(directory=self.config["megaplot_dir"], config=self.config)
@@ -334,13 +340,6 @@ class TreeData(LightningDataModule):
                     megaplot_data = megaplot_data[~(megaplot_data.filename.str.contains("IFAS"))]
                     
                     df = pd.concat([megaplot_data, df])
-                
-                if not self.debug:
-                    data_from_other_sites = df[~(df.siteID=="OSBS")]
-                    data_from_OSBS = df[(df.siteID=="OSBS")]
-                    species_to_keep = df[df.siteID=="OSBS"].taxonID.unique()
-                    data_from_other_sites = data_from_other_sites[data_from_other_sites.taxonID.isin(species_to_keep)].groupby("taxonID").apply(lambda x: x.head(self.config["samples_from_other_sites"]))
-                    df = pd.concat([data_from_OSBS, data_from_other_sites])
                     
                 if self.comet_logger:
                     self.comet_logger.experiment.log_parameter("Species before CHM filter", len(df.taxonID.unique()))

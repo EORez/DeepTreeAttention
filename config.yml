@@ -22,7 +22,7 @@ max_CHM_diff: 4
 CHM_height_limit: 8
 
 #Megaplot XY Data, these are .shp files saved as the siteID
-megaplot_dir: /orange/idtrees-collab/megaplot/
+megaplot_dir:
 
 #Crop generation, whether to make a new dataset and customize which parts to recreate
 #Checkout data artifact from comet
@@ -47,7 +47,7 @@ workers: 0
 sampling_ceiling: 100
 
 #Network Parameters
-pretrain_state_dict: /blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/3febd94f4aa64244bf91e6714b987106.pt
+pretrain_state_dict:
 gpus: 1
 batch_size: 128
 bands: 349

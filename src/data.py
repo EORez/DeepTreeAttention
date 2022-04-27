@@ -324,7 +324,7 @@ class TreeData(LightningDataModule):
                 df = filter_data(self.csv_file, config=self.config)
                 
                 #Only HARV and BART
-                df = df[df.plotID.isin(["BART","HARV"])]
+                df = df[df.siteID.isin(["BART","HARV"])]
                 
                 # Load any megaplot data
                 if not self.config["megaplot_dir"] is None:

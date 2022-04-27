@@ -121,7 +121,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
 
         return train, test
     else:
-        plotIDs = shp[shp.siteID=="BART"].plotID.unique()
+        plotIDs = shp[shp.siteID=="HARV"].plotID.unique()
 
     np.random.shuffle(plotIDs)
     species_to_sample = shp.taxonID.unique()
@@ -141,7 +141,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
     train = shp[~shp.plotID.isin(test.plotID.unique())]
     
     #HARV test data
-    train = train[train.siteID=="HARV"]
+    train = train[train.siteID=="BART"]
 
     # Remove fixed boxes from test
     test = test.loc[~test["box_id"].astype(str).str.contains("fixed").fillna(False)]    

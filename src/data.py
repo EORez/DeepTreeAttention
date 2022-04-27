@@ -122,6 +122,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
         return train, test
     else:
         plotIDs = shp[shp.siteID=="OSBS"].plotID.unique()
+        plotID = shp[shp.plotID.str.contains("OSBS_0")]
 
     np.random.shuffle(plotIDs)
     species_to_sample = shp.taxonID.unique()
@@ -139,6 +140,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
                 
     test = shp[shp.plotID.isin(test_plots)]
     train = shp[~shp.plotID.isin(test.plotID.unique())]
+    train = train[train.plotID.str.contains("IFAS")]
 
     # Remove fixed boxes from test
     test = test.loc[~test["box_id"].astype(str).str.contains("fixed").fillna(False)]    

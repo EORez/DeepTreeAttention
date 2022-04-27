@@ -25,7 +25,7 @@ git_commit=sys.argv[2]
 macro = []
 micro = []
 
-client = start_cluster.start(cpus=5, mem_size="4GB")    
+client = start_cluster.start(cpus=5, mem_size="8GB")    
 for x in range(5):
     #Create datamodule
     config = data.read_config("config.yml")
@@ -54,8 +54,6 @@ for x in range(5):
         comet_logger=comet_logger)
     
     data_module.setup()
-    if client:
-        client.close()
     
     comet_logger.experiment.log_parameter("train_hash",hash_pandas_object(data_module.train))
     comet_logger.experiment.log_parameter("test_hash",hash_pandas_object(data_module.test))

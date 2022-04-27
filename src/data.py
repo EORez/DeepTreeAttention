@@ -121,7 +121,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
 
         return train, test
     else:
-        plotIDs = shp[shp.siteID=="BART"].plotID.unique()
+        plotIDs = shp.plotID.unique()
 
     np.random.shuffle(plotIDs)
     species_to_sample = shp.taxonID.unique()
@@ -139,9 +139,6 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
                 
     test = shp[shp.plotID.isin(test_plots)]
     train = shp[~shp.plotID.isin(test.plotID.unique())]
-    
-    #HARV test data
-    train = train[train.siteID=="HARV"]
 
     # Remove fixed boxes from test
     test = test.loc[~test["box_id"].astype(str).str.contains("fixed").fillna(False)]    
@@ -324,7 +321,8 @@ class TreeData(LightningDataModule):
                 df = filter_data(self.csv_file, config=self.config)
                 
                 #Only HARV and BART
-                df = df[df.siteID.isin(["BART","HARV"])]
+                df = df[df.siteID.isin(["BART"])]
+                df[df.taxonID.isin(["ACSAS","BEAL2","BEPA","FRAM2"])]
                 
                 # Load any megaplot data
                 if not self.config["megaplot_dir"] is None:

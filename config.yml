@@ -52,9 +52,9 @@ gpus: 1
 batch_size: 128
 bands: 349
 lr: 0.0001
-fast_dev_run: True
+fast_dev_run: False
 accelerator: dp
-epochs: 150
+epochs: 5
 
 #Evaluation config
 #Top k class recall score

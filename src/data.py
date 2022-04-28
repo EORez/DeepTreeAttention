@@ -322,7 +322,7 @@ class TreeData(LightningDataModule):
                 
                 #Only HARV and BART
                 df = df[df.siteID.isin(["HARV"])]
-                df = df[df.taxonID.isin(["ACSAS","BEAL2","BEPA","FRAM2"])]
+                df = df[df.taxonID.isin(["ACRU","BEAL2","BEPA","FRAM2","TSCA"])]
                 
                 # Load any megaplot data
                 if not self.config["megaplot_dir"] is None:
@@ -404,7 +404,7 @@ class TreeData(LightningDataModule):
             )
             
             #hard sampling cutoff
-            annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
+            #annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
             annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:

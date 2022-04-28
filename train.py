@@ -145,4 +145,4 @@ for x in range(5):
     micro.append(comet_logger.experiment.get_metric("BART_micro"))
 
 result_loop = pd.DataFrame({"micro":micro,"macro":macro,"train":"HARV","test":"BART"})
-result_loop.to_csv("results/HARV_BART.csv")
+result_loop.to_csv("results/BART_HARV.csv")

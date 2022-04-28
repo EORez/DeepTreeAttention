@@ -141,8 +141,8 @@ for x in range(5):
     within_plot_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=plot_lists)
     comet_logger.experiment.log_metric("within_plot_confusion", within_plot_confusion)
     
-    macro.append(comet_logger.experiment.get_metric("BART_macro"))
-    micro.append(comet_logger.experiment.get_metric("BART_micro"))
+    macro.append(comet_logger.experiment.get_metric("HARV_macro"))
+    micro.append(comet_logger.experiment.get_metric("HARV_micro"))
 
 result_loop = pd.DataFrame({"micro":micro,"macro":macro,"train":"HARV","test":"HARV"})
 result_loop.to_csv("results/HARV_HARV.csv")

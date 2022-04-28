@@ -339,7 +339,7 @@ class TreeData(LightningDataModule):
                     data_from_other_sites = df[~(df.siteID=="OSBS")]
                     data_from_OSBS = df[(df.siteID=="OSBS")]
                     species_to_keep = df[df.siteID=="OSBS"].taxonID.unique()
-                    data_from_other_sites = data_from_other_sites[data_from_other_sites.taxonID.isin(species_to_keep)].groupby("taxonID").apply(lambda x: x.head(self.config["samples_from_other_sites"]))
+                    data_from_other_sites = data_from_other_sites[data_from_other_sites.taxonID.isin(species_to_keep)].groupby("taxonID").sample(frac=1).apply(lambda x: x.head(self.config["samples_from_other_sites"]))
                     df = pd.concat([data_from_OSBS, data_from_other_sites])
                     
                 if self.comet_logger:
@@ -407,7 +407,6 @@ class TreeData(LightningDataModule):
             )
             
             #hard sampling cutoff
-            annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
             annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:
@@ -421,7 +420,9 @@ class TreeData(LightningDataModule):
                 existing_train = pd.read_csv(os.path.join(os.path.dirname(self.config["existing_test_csv"]),"train.csv"))
                 self.train = annotations[annotations.individualID.isin(existing_train.individualID)]
             else:
-                self.train, self.test = train_test_split(annotations, config=self.config, client=self.client) 
+                self.train, self.test = train_test_split(annotations, config=self.config, client=self.client)
+                self.train = self.train.groupby("taxonID").apply(lambda x: x.sample(frac=1).head(self.config["sampling_ceiling"])).reset_index(drop=True)
+                
             self.train.to_csv("{}/train.csv".format(self.data_dir))
             self.test.to_csv("{}/test.csv".format(self.data_dir))
 

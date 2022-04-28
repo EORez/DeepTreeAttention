@@ -144,5 +144,5 @@ for x in range(5):
     macro.append(comet_logger.experiment.get_metric("BART_macro"))
     micro.append(comet_logger.experiment.get_metric("BART_micro"))
 
-result_loop = pd.DataFrame({"micro":micro,"macro":macro,"train":"HARV","test":"BART"})
+result_loop = pd.DataFrame({"micro":micro,"macro":macro,"train":"BART","test":"HARV"})
 result_loop.to_csv("results/BART_HARV.csv")

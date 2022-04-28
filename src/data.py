@@ -322,7 +322,7 @@ class TreeData(LightningDataModule):
                 
                 #Only HARV and BART
                 df = df[df.siteID.isin(["BART"])]
-                df[df.taxonID.isin(["ACSAS","BEAL2","BEPA","FRAM2"])]
+                df = df[df.taxonID.isin(["ACSAS","BEAL2","BEPA","FRAM2"])]
                 
                 # Load any megaplot data
                 if not self.config["megaplot_dir"] is None:

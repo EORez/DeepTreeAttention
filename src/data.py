@@ -119,7 +119,9 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
     # Remove fixed boxes from test
     test = test.loc[~test["box_id"].astype(str).str.contains("fixed").fillna(False)]    
     test = test.groupby("taxonID").filter(lambda x: x.shape[0] >= min_test_samples)
-    train = train.groupby("taxonID").filter(lambda x: x.shape[0] >= min_train_samples)    
+    train = train.groupby("taxonID").filter(lambda x: x.shape[0] >= min_train_samples)   
+    
+    train = train.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
     train = train[train.taxonID.isin(test.taxonID)]    
     test = test[test.taxonID.isin(train.taxonID)]
 
@@ -380,7 +382,6 @@ class TreeData(LightningDataModule):
             )
             
             #hard sampling cutoff
-            #annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
             annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:

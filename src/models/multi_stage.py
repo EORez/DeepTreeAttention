@@ -85,14 +85,14 @@ class MultiStage(LightningModule):
         self.level_label_dicts[1] =  {"CONIFER":0,"BROADLEAF":1}
         self.label_to_taxonIDs[1] = {v: k  for k, v in self.level_label_dicts[1].items()}
         level_1_train = self.train_df.copy()
-        level_1_train = level_1_train[~(level_1_train.taxonID=="PIPA1")]    
+        level_1_train = level_1_train[~(level_1_train.taxonID=="PIPA2")]    
         level_1_train.loc[~level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
         level_1_train.loc[level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
         level_1_train["label"] = [self.level_label_dicts[1][x] for x in level_1_train.taxonID]
         level_1_train = TreeDataset(df=level_1_train, config=self.config)
         
         level_1_test = self.test_df.copy()
-        level_1_test = level_1_test[~(level_1_test.taxonID=="PIPA1")]    
+        level_1_test = level_1_test[~(level_1_test.taxonID=="PIPA2")]    
         level_1_test.loc[~level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
         level_1_test.loc[level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
         level_1_test["label"] = [self.level_label_dicts[1][x] for x in level_1_test.taxonID]

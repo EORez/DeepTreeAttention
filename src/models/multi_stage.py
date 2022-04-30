@@ -307,15 +307,15 @@ class MultiStage(LightningModule):
                 if row["pred_taxa_top1_level_1"] == "BROADLEAF":
                     if row["pred_taxa_top1_level_2"] == "OAK":
                         ensemble_taxonID.append(row["pred_taxa_top1_level_4"])
-                        ensemble_label.append(row["pred_label_top1_level_4"])
+                        ensemble_label.append(self.species_label_dict[row["pred_taxa_top1_level_4"]])
                         ensemble_score.append(row["top1_score_level_4"])
                     else:
                         ensemble_taxonID.append(row["pred_taxa_top1_level_2"])
-                        ensemble_label.append(row["pred_label_top1_level_2"])
+                        ensemble_label.append(self.species_label_dict[row["pred_taxa_top1_level_2"]])
                         ensemble_score.append(row["top1_score_level_2"])                     
                 else:
                     ensemble_taxonID.append(row["pred_taxa_top1_level_3"])
-                    ensemble_label.append(row["pred_label_top1_level_3"])
+                    ensemble_label.append(self.species_label_dict[row["pred_taxa_top1_level_3"]])
                     ensemble_score.append(row["top1_score_level_3"])
         
         results["ensembleTaxonID"] = ensemble_taxonID

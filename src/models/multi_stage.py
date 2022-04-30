@@ -324,10 +324,9 @@ class MultiStage(LightningModule):
         
         return results[["geometry","individual","ens_score","ensembleTaxonID","ens_label"]]
             
-    def evaluation_scores(self, ensemble_df, experiment):            
-        ensemble_df["taxonID"] = self.test_df["taxonID"]
-        ensemble_df["label"] = self.test_df["label"]
-        ensemble_df["siteID"] = self.test_df["siteID"]
+    def evaluation_scores(self, ensemble_df, experiment):   
+        self.test_df["individual"] = self.test_df["individualID"]
+        ensemble_df = ensemble_df.merge(self.test_df, on="individual")
         
         taxon_accuracy = torchmetrics.functional.accuracy(
             preds=torch.tensor(ensemble_df.ens_label.values),
@@ -375,3 +374,4 @@ class MultiStage(LightningModule):
             site_data_frame = pd.concat(site_data_frame)
             experiment.log_table("site_results.csv", site_data_frame)        
         
+        return ensemble_df

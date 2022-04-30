@@ -82,13 +82,14 @@ trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}
 output = trainer.predict(m, dataloaders=m.predict_dataloader(df=data_module.test))
 results = m.gather_predictions(predict_df=output, crowns=data_module.crowns)
 ensemble_df = m.ensemble(results)
-m.evaluation_scores(
+ensemble_df = m.evaluation_scores(
     ensemble_df,
     experiment=comet_logger.experiment
 )
 
 #Log prediction
 comet_logger.experiment.log_table("test_predictions.csv", results)
+comet_logger.experiment.log_table("ensemble_df.csv", ensemble_df)
 
 #Visualizations
 ensemble_df.pred_taxa_top1 = ensemble_df.ensembleTaxonID

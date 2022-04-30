@@ -91,6 +91,7 @@ m.evaluation_scores(
 comet_logger.experiment.log_table("test_predictions.csv", results)
 
 #Visualizations
+ensemble_df.pred_taxa_top1 = ensemble_df.ensembleTaxonID
 rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 visualize.plot_spectra(ensemble_df, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
 visualize.rgb_plots(
@@ -114,11 +115,11 @@ visualize.confusion_matrix(
 
 #Within site confusion
 site_lists = data_module.train.groupby("label").site.unique()
-within_site_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=site_lists)
+within_site_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.ens_label, site_lists=site_lists)
 comet_logger.experiment.log_metric("within_site_confusion", within_site_confusion)
 
 #Within plot confusion
 plot_lists = data_module.train.groupby("label").plotID.unique()
-within_plot_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=plot_lists)
+within_plot_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.ens_label, site_lists=plot_lists)
 comet_logger.experiment.log_metric("within_plot_confusion", within_plot_confusion)
 

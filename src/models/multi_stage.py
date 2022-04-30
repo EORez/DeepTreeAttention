@@ -20,6 +20,13 @@ class base_model(Module):
             self.model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=classes, bands=config["bands"])
         else:
             self.model = Hang2020.spectral_network(bands=config["bands"], classes=classes)
+        
+        micro_recall = torchmetrics.Accuracy(average="micro")
+        macro_recall = torchmetrics.Accuracy(average="macro", num_classes=classes)
+        self.metrics = torchmetrics.MetricCollection(
+            {"Micro Accuracy":micro_recall,
+             "Macro Accuracy":macro_recall,
+             })
             
     def forward(self,x):
         x = self.model(x)
@@ -35,7 +42,8 @@ class MultiStage(LightningModule):
         self.loss_weights = []
         self.config = config
         self.models = nn.ModuleList()
-        self.species_label_dict = train_df[["taxonID","label"]].drop_duplicates().set_index("label").to_dict()["taxonID"]
+        self.species_label_dict = train_df[["taxonID","label"]].drop_duplicates().set_index("taxonID").to_dict()["label"]
+        self.species_label_dict["OTHER"] = len(self.species_label_dict)
         self.index_to_label = {v:k for k,v in self.species_label_dict.items()}
         self.crowns = crowns
         self.level_label_dicts = {}     
@@ -65,89 +73,88 @@ class MultiStage(LightningModule):
     def create_datasets(self):
         #Create levels
         ## Level 0        
-        self.species_label_dict = self.train_df[["label","taxonID"]].drop_duplicates().set_index("taxonID").to_dict()["label"]
         self.level_label_dicts[0] = {"PIPA2":0,"OTHER":1}
         self.label_to_taxonIDs[0] = {v: k  for k, v in self.level_label_dicts[0].items()}
         
-        level_0_train = self.train_df.copy()
-        level_0_train.loc[~(level_0_train.taxonID == "PIPA2"),"taxonID"] = "OTHER"
-        level_0_train.loc[(level_0_train.taxonID == "PIPA2"),"taxonID"] = "PIPA2"            
-        level_0_train["label"] = [self.level_label_dicts[0][x] for x in level_0_train.taxonID]
-        level_0_train = TreeDataset(df=level_0_train, config=self.config)
+        self.level_0_train = self.train_df.copy()
+        self.level_0_train.loc[~(self.level_0_train.taxonID == "PIPA2"),"taxonID"] = "OTHER"
+        self.level_0_train.loc[(self.level_0_train.taxonID == "PIPA2"),"taxonID"] = "PIPA2"            
+        self.level_0_train["label"] = [self.level_label_dicts[0][x] for x in self.level_0_train.taxonID]
+        self.level_0_train = TreeDataset(df=self.level_0_train, config=self.config)
         
-        level_0_test = self.test_df.copy()
-        level_0_test.loc[~(level_0_test.taxonID == "PIPA2"),"taxonID"] = "OTHER"
-        level_0_test.loc[(level_0_test.taxonID == "PIPA2"),"taxonID"] = "PIPA2"                        
-        level_0_test["label"]= [self.level_label_dicts[0][x] for x in level_0_test.taxonID]            
-        level_0_test = TreeDataset(df=level_0_test, config=self.config)
+        self.level_0_test = self.test_df.copy()
+        self.level_0_test.loc[~(self.level_0_test.taxonID == "PIPA2"),"taxonID"] = "OTHER"
+        self.level_0_test.loc[(self.level_0_test.taxonID == "PIPA2"),"taxonID"] = "PIPA2"                        
+        self.level_0_test["label"]= [self.level_label_dicts[0][x] for x in self.level_0_test.taxonID]            
+        self.level_0_test = TreeDataset(df=self.level_0_test, config=self.config)
         
         ## Level 1
         self.level_label_dicts[1] =  {"CONIFER":0,"BROADLEAF":1}
         self.label_to_taxonIDs[1] = {v: k  for k, v in self.level_label_dicts[1].items()}
-        level_1_train = self.train_df.copy()
-        level_1_train = level_1_train[~(level_1_train.taxonID=="PIPA2")]    
-        level_1_train.loc[~level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
-        level_1_train.loc[level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
-        level_1_train["label"] = [self.level_label_dicts[1][x] for x in level_1_train.taxonID]
-        level_1_train = TreeDataset(df=level_1_train, config=self.config)
+        self.level_1_train = self.train_df.copy()
+        self.level_1_train = self.level_1_train[~(self.level_1_train.taxonID=="PIPA2")]    
+        self.level_1_train.loc[~self.level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
+        self.level_1_train.loc[self.level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
+        self.level_1_train["label"] = [self.level_label_dicts[1][x] for x in self.level_1_train.taxonID]
+        self.level_1_train = TreeDataset(df=self.level_1_train, config=self.config)
         
-        level_1_test = self.test_df.copy()
-        level_1_test = level_1_test[~(level_1_test.taxonID=="PIPA2")]    
-        level_1_test.loc[~level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
-        level_1_test.loc[level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
-        level_1_test["label"] = [self.level_label_dicts[1][x] for x in level_1_test.taxonID]
-        level_1_test = TreeDataset(df=level_1_test, config=self.config)
+        self.level_1_test = self.test_df.copy()
+        self.level_1_test = self.level_1_test[~(self.level_1_test.taxonID=="PIPA2")]    
+        self.level_1_test.loc[~self.level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
+        self.level_1_test.loc[self.level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
+        self.level_1_test["label"] = [self.level_label_dicts[1][x] for x in self.level_1_test.taxonID]
+        self.level_1_test = TreeDataset(df=self.level_1_test, config=self.config)
         
         ## Level 2
-        broadleaf = [x for x in list(self.species_label_dict.keys()) if (not x in ["PICL","PIEL","PITA","PIPA2"]) & (not "QU" in x)]            
+        broadleaf = [x for x in list(self.species_label_dict.keys()) if (not x in ["PICL","PIEL","PITA","PIPA2","OTHER"]) & (not "QU" in x)]            
         self.level_label_dicts[2] =  {v:k for k, v in enumerate(broadleaf)}
         self.level_label_dicts[2]["OAK"] = len(self.level_label_dicts[2])
         self.label_to_taxonIDs[2] = {v: k  for k, v in self.level_label_dicts[2].items()}
                     
-        level_2_train = self.train_df.copy()
-        level_2_train = level_2_train[~level_2_train.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]  
-        level_2_train.loc[level_2_train.taxonID.str.contains("QU"),"taxonID"] = "OAK"
-        level_2_train["label"] = [self.level_label_dicts[2][x] for x in level_2_train.taxonID]
-        level_2_train = TreeDataset(df=level_2_train, config=self.config)
+        self.level_2_train = self.train_df.copy()
+        self.level_2_train = self.level_2_train[~self.level_2_train.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]  
+        self.level_2_train.loc[self.level_2_train.taxonID.str.contains("QU"),"taxonID"] = "OAK"
+        self.level_2_train["label"] = [self.level_label_dicts[2][x] for x in self.level_2_train.taxonID]
+        self.level_2_train = TreeDataset(df=self.level_2_train, config=self.config)
         
-        level_2_test = self.test_df.copy()
-        level_2_test = level_2_test[~level_2_test.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]  
-        level_2_test.loc[level_2_test.taxonID.str.contains("QU"),"taxonID"] = "OAK"
-        level_2_test["label"] = [self.level_label_dicts[2][x] for x in level_2_test.taxonID]
-        level_2_test = TreeDataset(df=level_2_test, config=self.config)
+        self.level_2_test = self.test_df.copy()
+        self.level_2_test = self.level_2_test[~self.level_2_test.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]  
+        self.level_2_test.loc[self.level_2_test.taxonID.str.contains("QU"),"taxonID"] = "OAK"
+        self.level_2_test["label"] = [self.level_label_dicts[2][x] for x in self.level_2_test.taxonID]
+        self.level_2_test = TreeDataset(df=self.level_2_test, config=self.config)
         
         ## Level 3
         evergreen = [x for x in list(self.species_label_dict.keys()) if x in ["PICL","PIEL","PITA"]]         
         self.level_label_dicts[3] =  {v:k for k, v in enumerate(evergreen)}
         self.label_to_taxonIDs[3] = {v: k  for k, v in self.level_label_dicts[3].items()}
                     
-        level_3_train = self.train_df.copy()
-        level_3_train = level_3_train[level_3_train.taxonID.isin(["PICL","PIEL","PITA"])]  
-        level_3_train["label"] = [self.level_label_dicts[3][x] for x in level_3_train.taxonID]
-        level_3_train = TreeDataset(df=level_3_train, config=self.config)
+        self.level_3_train = self.train_df.copy()
+        self.level_3_train = self.level_3_train[self.level_3_train.taxonID.isin(["PICL","PIEL","PITA"])]  
+        self.level_3_train["label"] = [self.level_label_dicts[3][x] for x in self.level_3_train.taxonID]
+        self.level_3_train = TreeDataset(df=self.level_3_train, config=self.config)
         
-        level_3_test = self.test_df.copy()
-        level_3_test = level_3_test[level_3_test.taxonID.isin(["PICL","PIEL","PITA"])]  
-        level_3_test["label"] = [self.level_label_dicts[3][x] for x in level_3_test.taxonID]
-        level_3_test = TreeDataset(df=level_3_test, config=self.config)
+        self.level_3_test = self.test_df.copy()
+        self.level_3_test = self.level_3_test[self.level_3_test.taxonID.isin(["PICL","PIEL","PITA"])]  
+        self.level_3_test["label"] = [self.level_label_dicts[3][x] for x in self.level_3_test.taxonID]
+        self.level_3_test = TreeDataset(df=self.level_3_test, config=self.config)
         
         ## Level 4
         oak = [x for x in list(self.species_label_dict.keys()) if "QU" in x]
         self.level_label_dicts[4] =  {v:k for k, v in enumerate(oak)}
         self.label_to_taxonIDs[4] = {v: k  for k, v in self.level_label_dicts[4].items()}
                     
-        level_4_train = self.train_df.copy()
-        level_4_train = level_4_train[level_4_train.taxonID.str.contains("QU")]
-        level_4_train["label"] = [self.level_label_dicts[4][x] for x in level_4_train.taxonID]
-        level_4_train = TreeDataset(df=level_4_train, config=self.config)
+        self.level_4_train = self.train_df.copy()
+        self.level_4_train = self.level_4_train[self.level_4_train.taxonID.str.contains("QU")]
+        self.level_4_train["label"] = [self.level_label_dicts[4][x] for x in self.level_4_train.taxonID]
+        self.level_4_train = TreeDataset(df=self.level_4_train, config=self.config)
         
-        level_4_test = self.test_df.copy()
-        level_4_test = level_4_test[level_4_test.taxonID.str.contains("QU")]
-        level_4_test["label"] = [self.level_label_dicts[4][x] for x in level_4_test.taxonID]
-        level_4_test = TreeDataset(df=level_4_test, config=self.config)
+        self.level_4_test = self.test_df.copy()
+        self.level_4_test = self.level_4_test[self.level_4_test.taxonID.str.contains("QU")]
+        self.level_4_test["label"] = [self.level_label_dicts[4][x] for x in self.level_4_test.taxonID]
+        self.level_4_test = TreeDataset(df=self.level_4_test, config=self.config)
         
-        train_datasets = {0:level_0_train, 1:level_1_train,2:level_2_train,3:level_3_train,4:level_4_train}
-        test_datasets = [level_0_test, level_1_test,level_2_test,level_3_test,level_4_test]
+        train_datasets = {0:self.level_0_train, 1:self.level_1_train,2:self.level_2_train,3:self.level_3_train,4:self.level_4_train}
+        test_datasets = [self.level_0_test, self.level_1_test,self.level_2_test,self.level_3_test,self.level_4_test]
         
         return train_datasets, test_datasets
     
@@ -171,13 +178,27 @@ class MultiStage(LightningModule):
             data_loader = torch.utils.data.DataLoader(
                 ds,
                 batch_size=self.config["batch_size"],
-                shuffle=True,
+                shuffle=False,
                 num_workers=self.config["workers"],
             )
             data_loaders.append(data_loader)
         
         return data_loaders 
       
+    def predict_dataloader(self, df):
+        ## Validation loaders are a list https://github.com/PyTorchLightning/pytorch-lightning/issues/10809
+        data_loaders = []
+        ds = TreeDataset(df=df, config=self.config)        
+        for x in range(len(self.models)):
+            data_loader = torch.utils.data.DataLoader(
+                ds,
+                batch_size=self.config["batch_size"],
+                shuffle=False,
+                num_workers=self.config["workers"],
+            )
+            data_loaders.append(data_loader)
+        
+        return data_loaders
         
     def configure_optimizers(self):
         """Create a optimizer for each level"""
@@ -218,10 +239,12 @@ class MultiStage(LightningModule):
         loss = F.cross_entropy(y_hat, y, weight=self.loss_weights[dataloader_idx])   
         
         self.log("val_loss",loss)
+        metric_dict = self.models[dataloader_idx].metrics(y_hat, y)
+        self.log_dict(metric_dict, on_epoch=True, on_step=False)
         
         return individual, y_hat  
     
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+    def predict_step(self, batch, batch_idx, dataloader_idx):
         """Calculate predictions
         """
         individual, inputs, y = batch
@@ -263,87 +286,64 @@ class MultiStage(LightningModule):
         
         results = reduce(lambda  left,right: pd.merge(left,right,on=['individual'],
                                                         how='outer'), level_results)        
-        results = crowns[["geometry","individual","taxonID"]].merge(results, on="individual")
-        results["label"] = results["taxonID"].apply(lambda x: self.index_to_label[x])  
+        results = crowns[["geometry","individual"]].merge(results, on="individual")    
         results = gpd.GeoDataFrame(results, geometry="geometry")
             
         return results
     
     def ensemble(self, results):
         """Given a multi-level model, create a final output prediction and score"""
-        results.loc[results.pred_taxa_top1_level_0 == "PIPA2","ensTaxonID"] = "PIPA2"
-        results.loc[results.pred_taxa_top1_level_0 == "PIPA2","ens_label"] = results[results.pred_taxa_top1_level_0 == "PIPA2"].pred_label_top1_level_0
-        results.loc[results.pred_taxa_top1_level_0 == "PIPA2","ens_score"] = results[results.pred_taxa_top1_level_0 == "PIPA2"].top1_score_level_0
+        ensemble_taxonID = []
+        ensemble_label = []
+        ensemble_score = []
         
-        results.loc[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"]),"ensTaxonID"] = results[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"])].pred_taxa_top1_level_2
-        results.loc[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"]),"ens_label"] = results[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"])].pred_label_top1_level_2
-        results.loc[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"]),"ens_score"] = results[~results.pred_taxa_top1_level_2.isin(["PICL","PIEL","PITA","PIPA2","OAK"])].top1_score_level_2
-
-        results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ensembleTaxonID"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].pred_taxa_top1_level_3
-        results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ens_label"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].pred_label_top1_level_3
-        results.loc[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"]),"ens_score"] = results[results.pred_taxa_top1_level_3.isin(["PICL","PIEL","PITA"])].top1_score_level_3
+        for index,row in results.iterrows():
+            if row["pred_taxa_top1_level_0"] == "PIPA2":
+                ensemble_taxonID.append("PIPA2")
+                ensemble_label.append(self.species_label_dict["PIPA2"])
+                ensemble_score.append(row["top1_score_level_0"])                
+            else:
+                if row["pred_taxa_top1_level_1"] == "BROADLEAF":
+                    if row["pred_taxa_top1_level_2"] == "OAK":
+                        ensemble_taxonID.append(row["pred_taxa_top1_level_4"])
+                        ensemble_label.append(row["pred_label_top1_level_4"])
+                        ensemble_score.append(row["top1_score_level_4"])
+                    else:
+                        ensemble_taxonID.append(row["pred_taxa_top1_level_2"])
+                        ensemble_label.append(row["pred_label_top1_level_2"])
+                        ensemble_score.append(row["top1_score_level_2"])                     
+                else:
+                    ensemble_taxonID.append(row["pred_taxa_top1_level_3"])
+                    ensemble_label.append(row["pred_label_top1_level_3"])
+                    ensemble_score.append(row["top1_score_level_3"])
         
-        results.loc[~results.pred_taxa_top1_level_4.isnull(),"ensembleTaxonID"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].pred_taxa_top1_level_4
-        results.loc[~results.pred_taxa_top1_level_4.isnull(),"ens_label"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].pred_label_top1_level_4
-        results.loc[~results.pred_taxa_top1_level_4.isnull(),"ens_score"] = results.loc[~results.pred_taxa_top1_level_4.isnull()].top1_score_level_4
-    
-        return results[["geometry","individual","ens_score","ensembleTaxonID","ens_label","label","taxonID"]]
-    
-    #def validation_epoch_end(self, outputs):
-        #results = self.gather_predictions(outputs, crowns=self.crowns)
-        #ensemble_df = self.ensemble(results)
-        #final_micro = torchmetrics.functional.accuracy(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values),
-            #average="micro")
+        results["ensembleTaxonID"] = ensemble_taxonID
+        results["ens_score"] = ensemble_score
+        results["ens_label"] = ensemble_label
         
-        #final_macro = torchmetrics.functional.accuracy(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values),
-            #average="macro",
-            #num_classes=self.classes)
-        
-        #self.log("Epoch Micro Accuracy", final_micro)
-        #self.log("Epoch Macro Accuracy", final_macro)
-        
-        ## Log results by species
-        #taxon_accuracy = torchmetrics.functional.accuracy(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values), 
-            #average="none", 
-            #num_classes=self.classes
-        #)
-        #taxon_precision = torchmetrics.functional.precision(
-            #preds=torch.tensor(ensemble_df.ens_label.values),
-            #target=torch.tensor(ensemble_df.label.values),
-            #average="none",
-            #num_classes=self.classes
-        #)
-        #species_table = pd.DataFrame(
-            #{"taxonID":self.label_to_index.keys(),
-             #"accuracy":taxon_accuracy,
-             #"precision":taxon_precision
-             #})
-        
-        #for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
-            #self.log("Epoch_{}_accuracy".format(key), value)
+        return results[["geometry","individual","ens_score","ensembleTaxonID","ens_label"]]
             
-    def evaluation_scores(self, ensemble_df, experiment):
-        #Aggregate to a final prediction
+    def evaluation_scores(self, ensemble_df, experiment):            
+        ensemble_df["taxonID"] = self.test_df["taxonID"]
+        ensemble_df["label"] = self.test_df["label"]
+        ensemble_df["siteID"] = self.test_df["siteID"]
+        
         taxon_accuracy = torchmetrics.functional.accuracy(
             preds=torch.tensor(ensemble_df.ens_label.values),
-            target=torch.tensor(ensemble_df.label.values), 
-            average="none", 
+            target=torch.tensor(ensemble_df.label.values),
+            average="none",
             num_classes=len(self.species_label_dict)
-        )
+        )        
+            
         taxon_precision = torchmetrics.functional.precision(
             preds=torch.tensor(ensemble_df.ens_label.values),
             target=torch.tensor(ensemble_df.label.values),
             average="none",
             num_classes=len(self.species_label_dict)
-        )
+        )        
+        
         species_table = pd.DataFrame(
-            {"taxonID":self.label_to_index.keys(),
+            {"taxonID":self.species_label_dict.keys(),
              "accuracy":taxon_accuracy,
              "precision":taxon_precision
              })
@@ -355,22 +355,21 @@ class MultiStage(LightningModule):
         # Log result by site
         if experiment:
             site_data_frame =[]
-            for name, group in ensemble_df.groupby("siteID"):
-                site_micro = torchmetrics.functional.accuracy(
-                    preds=torch.tensor(group.ens_label.values),
-                    target=torch.tensor(group.label.values),
-                    average="micro")
+            for name, group in ensemble_df.groupby("siteID"):            
+                site_micro = np.sum(group.ens_label.values == group.label.values)/len(group.ens_label.values)
                 
                 site_macro = torchmetrics.functional.accuracy(
                     preds=torch.tensor(group.ens_label.values),
                     target=torch.tensor(group.label.values),
-                    average="macro",
-                    num_classes=self.classes)
+                    average=None,
+                    num_classes=len(self.species_label_dict))
+                
+                site_macro = site_macro[:len(self.species_label_dict)-1].numpy().mean()
                 
                 experiment.log_metric("{}_macro".format(name), site_macro)
                 experiment.log_metric("{}_micro".format(name), site_micro) 
                 
-                row = pd.DataFrame({"Site":[name], "Micro Recall": [site_micro.numpy()], "Macro Recall": [site_macro.numpy()]})
+                row = pd.DataFrame({"Site":[name], "Micro Recall": [site_micro], "Macro Recall": [site_macro]})
                 site_data_frame.append(row)
             site_data_frame = pd.concat(site_data_frame)
             experiment.log_table("site_results.csv", site_data_frame)        

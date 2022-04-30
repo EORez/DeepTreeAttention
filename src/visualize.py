@@ -112,7 +112,7 @@ def rgb_plots(df, config, test_crowns, test_points, plot_n_individuals=1, experi
         
         if experiment:
             plt.savefig("{}/{}.png".format(tmpdir, row["individual"]))
-            experiment.log_image("{}/{}.png".format(tmpdir, row["individual"]), name="crown: {}, True: {}, Predicted {}".format(row["individual"], row.true_taxa, row.pred_taxa_top1))
+            experiment.log_image("{}/{}.png".format(tmpdir, row["individual"]), name="crown: {}, True: {}, Predicted {}".format(row["individual"], row.taxonID, row.pred_taxa_top1))
         src.close()
         plt.close("all")
     plt.ioff()    
@@ -133,5 +133,5 @@ def plot_spectra(df, crop_dir, plot_n_individuals=20, experiment=None):
             plt.plot(x)
         if experiment:
             plt.savefig("{}/{}_spectra.png".format(tmpdir, row["individual"]))            
-            experiment.log_image("{}/{}_spectra.png".format(tmpdir, row["individual"]), name="{}, {} Predicted {}".format(row["individual"], row.true_taxa, row.pred_taxa_top1))
+            experiment.log_image("{}/{}_spectra.png".format(tmpdir, row["individual"]), name="{}, {} Predicted {}".format(row["individual"], row.taxonID, row.pred_taxa_top1))
         plt.close()    

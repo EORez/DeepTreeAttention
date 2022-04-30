@@ -241,6 +241,7 @@ class MultiStage(LightningModule):
         self.log("val_loss",loss)
         metric_dict = self.models[dataloader_idx].metrics(y_hat, y)
         self.log_dict(metric_dict, on_epoch=True, on_step=False)
+        y_hat = F.softmax(y_hat)
         
         return individual, y_hat  
     
@@ -250,7 +251,7 @@ class MultiStage(LightningModule):
         individual, inputs, y = batch
         images = inputs["HSI"]  
         y_hat = self.models[dataloader_idx].forward(images)
-        
+        y_hat = F.softmax(y_hat)
         return individual, y_hat
     
     def gather_predictions(self, predict_df, crowns, return_features=False):
@@ -306,15 +307,15 @@ class MultiStage(LightningModule):
                 if row["pred_taxa_top1_level_1"] == "BROADLEAF":
                     if row["pred_taxa_top1_level_2"] == "OAK":
                         ensemble_taxonID.append(row["pred_taxa_top1_level_4"])
-                        ensemble_label.append(row["pred_label_top1_level_4"])
+                        ensemble_label.append(self.species_label_dict[row["pred_taxa_top1_level_4"]])
                         ensemble_score.append(row["top1_score_level_4"])
                     else:
                         ensemble_taxonID.append(row["pred_taxa_top1_level_2"])
-                        ensemble_label.append(row["pred_label_top1_level_2"])
+                        ensemble_label.append(self.species_label_dict[row["pred_taxa_top1_level_2"]])
                         ensemble_score.append(row["top1_score_level_2"])                     
                 else:
                     ensemble_taxonID.append(row["pred_taxa_top1_level_3"])
-                    ensemble_label.append(row["pred_label_top1_level_3"])
+                    ensemble_label.append(self.species_label_dict[row["pred_taxa_top1_level_3"]])
                     ensemble_score.append(row["top1_score_level_3"])
         
         results["ensembleTaxonID"] = ensemble_taxonID

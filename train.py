@@ -87,11 +87,14 @@ m.evaluation_scores(
     experiment=comet_logger.experiment
 )
 
+#Log prediction
+comet_logger.experiment.log_table("test_predictions.csv", results)
+
 #Visualizations
 rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
-visualize.plot_spectra(results, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
+visualize.plot_spectra(ensemble_df, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
 visualize.rgb_plots(
-    df=results,
+    df=ensemble_df,
     config=config,
     test_crowns=data_module.crowns,
     test_points=data_module.canopy_points,
@@ -100,7 +103,7 @@ visualize.rgb_plots(
 
 visualize.confusion_matrix(
     comet_experiment=comet_logger.experiment,
-    results=results,
+    results=ensemble_df,
     species_label_dict=data_module.species_label_dict,
     test_crowns=data_module.crowns,
     test=data_module.test,
@@ -108,8 +111,6 @@ visualize.confusion_matrix(
     rgb_pool=rgb_pool
 )
 
-#Log prediction
-comet_logger.experiment.log_table("test_predictions.csv", results)
 
 #Within site confusion
 site_lists = data_module.train.groupby("label").site.unique()

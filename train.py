@@ -82,7 +82,7 @@ trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}
 output = trainer.predict(m, dataloaders=m.predict_dataloader(df=data_module.test))
 results = m.gather_predictions(predict_df=output, crowns=data_module.crowns)
 ensemble_df = m.ensemble(results)
-results = m.evaluation_scores(
+m.evaluation_scores(
     ensemble_df,
     experiment=comet_logger.experiment
 )

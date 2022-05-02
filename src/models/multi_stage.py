@@ -43,7 +43,6 @@ class MultiStage(LightningModule):
         self.config = config
         self.models = nn.ModuleList()
         self.species_label_dict = train_df[["taxonID","label"]].drop_duplicates().set_index("taxonID").to_dict()["label"]
-        self.species_label_dict["OTHER"] = len(self.species_label_dict)
         self.index_to_label = {v:k for k,v in self.species_label_dict.items()}
         self.crowns = crowns
         self.level_label_dicts = {}     
@@ -106,7 +105,7 @@ class MultiStage(LightningModule):
         self.level_1_test = TreeDataset(df=self.level_1_test, config=self.config)
         
         ## Level 2
-        broadleaf = [x for x in list(self.species_label_dict.keys()) if (not x in ["PICL","PIEL","PITA","PIPA2","OTHER"]) & (not "QU" in x)]            
+        broadleaf = [x for x in list(self.species_label_dict.keys()) if (not x in ["PICL","PIEL","PITA","PIPA2"]) & (not "QU" in x)]            
         self.level_label_dicts[2] =  {v:k for k, v in enumerate(broadleaf)}
         self.level_label_dicts[2]["OAK"] = len(self.level_label_dicts[2])
         self.label_to_taxonIDs[2] = {v: k  for k, v in self.level_label_dicts[2].items()}
@@ -363,9 +362,7 @@ class MultiStage(LightningModule):
                     target=torch.tensor(group.label.values),
                     average=None,
                     num_classes=len(self.species_label_dict))
-                
-                site_macro = site_macro[:len(self.species_label_dict)-1].numpy().mean()
-                
+                                
                 experiment.log_metric("{}_macro".format(name), site_macro)
                 experiment.log_metric("{}_micro".format(name), site_micro) 
                 

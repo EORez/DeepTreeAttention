@@ -24,8 +24,8 @@ from pandas.util import hash_pandas_object
 git_branch=sys.argv[1]
 git_commit=sys.argv[2]
 
-micro = []
-macro = []
+micro_list = []
+macro_list = []
 for min_train in [10, 20, 30, 50, 100, 150, 200, 1000, 5000]:
     #Create datamodule
     config = data.read_config("config.yml")
@@ -157,13 +157,13 @@ for min_train in [10, 20, 30, 50, 100, 150, 200, 1000, 5000]:
         preds=torch.tensor(results.pred_label_top1.values),
         target=torch.tensor(results.label.values),
         average="macro",
-        num_classes=data_module.classes
+        num_classes=data_module.classes)
     
-    micro.append(micro_acc)
-    macro.append(macro_acc)
+    micro_list.append(micro_acc)
+    macro_list.append(macro_acc)
 
 pd.DataFrame({"min_train_samples":[10, 20, 30, 50, 100, 150, 200, 1000, 5000],
-              "micro_acc":micro,
-              "macro_acc":macro}
+              "micro_acc":micro_list,
+              "macro_acc":macro_list}
              ).to_csv("results/all_sites_train_curve.csv")
     

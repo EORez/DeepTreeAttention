@@ -153,7 +153,7 @@ for min_train in [10, 20, 30, 50, 100, 150, 200, 1000, 5000]:
         average="micro", 
         num_classes=data_module.classes
     )
-    macro_acc torchmetrics.functional.precision(
+    macro_acc = torchmetrics.functional.precision(
         preds=torch.tensor(results.pred_label_top1.values),
         target=torch.tensor(results.label.values),
         average="macro",

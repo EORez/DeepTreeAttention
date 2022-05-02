@@ -199,7 +199,7 @@ def train_test_split(shp, config, client = None):
     # The size of the datasets
     if len(ties) > 1:
         print("The size of tied datasets with {} species is {}".format(test_species, [x[1].shape[0] for x in ties]))        
-        saved_train, saved_test = ties[np.argmax([x[1].shape[0] for x in ties])]
+        saved_train, saved_test = ties[np.argmin([x[1].shape[0] for x in ties])]
         
     train = saved_train
     test = saved_test    
@@ -267,16 +267,6 @@ class TreeDataset(Dataset):
             return individual, inputs, label
         else:
             return individual, inputs
-
-def filter_dead_annotations(crowns, config):
-    """Given a set of annotations, predict whether RGB is dead
-    Args:
-        annotations: must contain xmin, xmax, ymin, ymax and image path fields"""
-    ds = dead.utm_dataset(crowns, config=config)
-    dead_model = dead.AliveDead.load_from_checkpoint(config["dead_model"], config=config)    
-    label, score = dead.predict_dead_dataloader(dead_model=dead_model, dataset=ds, config=config)
-    
-    return label, score
     
 class TreeData(LightningDataModule):
     """

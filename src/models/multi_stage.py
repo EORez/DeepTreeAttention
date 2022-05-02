@@ -360,7 +360,7 @@ class MultiStage(LightningModule):
                 site_macro = torchmetrics.functional.accuracy(
                     preds=torch.tensor(group.ens_label.values),
                     target=torch.tensor(group.label.values),
-                    average=None,
+                    average="macro",
                     num_classes=len(self.species_label_dict))
                                 
                 experiment.log_metric("{}_macro".format(name), site_macro)

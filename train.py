@@ -92,7 +92,7 @@ comet_logger.experiment.log_table("test_predictions.csv", results)
 comet_logger.experiment.log_table("ensemble_df.csv", ensemble_df)
 
 #Visualizations
-ensemble_df.pred_taxa_top1 = ensemble_df.ensembleTaxonID
+ensemble_df["pred_taxa_top1"] = ensemble_df.ensembleTaxonID
 rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
 visualize.plot_spectra(ensemble_df, crop_dir=config["crop_dir"], experiment=comet_logger.experiment)
 visualize.rgb_plots(

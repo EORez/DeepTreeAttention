@@ -418,7 +418,8 @@ class TreeData(LightningDataModule):
                 existing_test = pd.read_csv(self.config["existing_test_csv"])
                 self.test = annotations[annotations.individualID.isin(existing_test.individualID)]  
                 self.train = annotations[~annotations.individualID.isin(existing_test.individualID)] 
-                self.train = self.train.groupby("taxonID").filter(lambda x: x.shape[0] >= self.config["min_train_samples"])
+                self.train = self.train[self.train.taxonID.isin(self.test.taxonID)]
+                self.train = self.train.groupby("taxonID").apply(lambda x: x.sample(frac=1).head(self.config["sampling_ceiling"])).reset_index(drop=True)                
                 
             else:
                 self.train, self.test = train_test_split(annotations, config=self.config, client=self.client)

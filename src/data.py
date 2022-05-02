@@ -407,7 +407,6 @@ class TreeData(LightningDataModule):
             )
             
             #hard sampling cutoff
-            annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
             annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:
@@ -422,6 +421,8 @@ class TreeData(LightningDataModule):
                 self.train = annotations[annotations.individualID.isin(existing_train.individualID)]
             else:
                 self.train, self.test = train_test_split(annotations, config=self.config, client=self.client) 
+                self.train = self.train.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
+                
             self.train.to_csv("{}/train.csv".format(self.data_dir))
             self.test.to_csv("{}/test.csv".format(self.data_dir))
 

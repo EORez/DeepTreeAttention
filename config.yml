@@ -37,7 +37,7 @@ replace: True
 existing_test_csv: /blue/ewhite/b.weinstein/DeepTreeAttention/76fdac16a33f4114841eb227f2cd68d2/test.csv
 
 #How many samples from non-osbs sites can we use per species
-samples_from_other_sites: 0
+samples_from_other_sites: 30
 
 # Data loader
 #resized Pixel size of the crowns. Square crops around each pixel of size x are used

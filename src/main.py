@@ -306,20 +306,15 @@ class TreeModel(LightningModule):
         
         # Concat batches
         predictions_top1 = np.argmax(predictions, 1)    
-        predictions_top2 = pd.DataFrame(predictions).apply(lambda x: np.argsort(x.values)[-2], axis=1)
         top1_score = pd.DataFrame(predictions).apply(lambda x: x.sort_values(ascending=False).values[0], axis=1)
-        top2_score = pd.DataFrame(predictions).apply(lambda x: x.sort_values(ascending=False).values[1], axis=1)
         
         # Construct a df of predictions
         df = pd.DataFrame({
             "pred_label_top1":predictions_top1,
-            "pred_label_top2":predictions_top2,
             "top1_score":top1_score,
-            "top2_score":top2_score,
             "individual":individuals
         })
         df["pred_taxa_top1"] = df["pred_label_top1"].apply(lambda x: self.index_to_label[x]) 
-        df["pred_taxa_top2"] = df["pred_label_top2"].apply(lambda x: self.index_to_label[x])        
         if train:
             df["label"] = labels
             df["true_taxa"] = df["label"].apply(lambda x: self.index_to_label[x])            

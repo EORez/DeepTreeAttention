@@ -94,7 +94,7 @@ class TreeModel(LightningModule):
         
         return loss
 
-    def on_validation_epoch_end(self):
+    def on_validation_end(self):
         results = self.predict_dataloader(self.trainer.datamodule.val_dataloader())
         
         final_micro = torchmetrics.functional.accuracy(

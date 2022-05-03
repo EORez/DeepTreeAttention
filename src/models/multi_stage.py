@@ -79,13 +79,13 @@ class MultiStage(LightningModule):
         self.level_0_train.loc[~(self.level_0_train.taxonID == "PIPA2"),"taxonID"] = "OTHER"
         self.level_0_train.loc[(self.level_0_train.taxonID == "PIPA2"),"taxonID"] = "PIPA2"            
         self.level_0_train["label"] = [self.level_label_dicts[0][x] for x in self.level_0_train.taxonID]
-        self.level_0_train = TreeDataset(df=self.level_0_train, config=self.config)
+        self.level_0_train_ds = TreeDataset(df=self.level_0_train, config=self.config)
         
         self.level_0_test = self.test_df.copy()
         self.level_0_test.loc[~(self.level_0_test.taxonID == "PIPA2"),"taxonID"] = "OTHER"
         self.level_0_test.loc[(self.level_0_test.taxonID == "PIPA2"),"taxonID"] = "PIPA2"                        
         self.level_0_test["label"]= [self.level_label_dicts[0][x] for x in self.level_0_test.taxonID]            
-        self.level_0_test = TreeDataset(df=self.level_0_test, config=self.config)
+        self.level_0_test_ds = TreeDataset(df=self.level_0_test, config=self.config)
         
         ## Level 1
         self.level_label_dicts[1] =  {"CONIFER":0,"BROADLEAF":1}
@@ -95,14 +95,14 @@ class MultiStage(LightningModule):
         self.level_1_train.loc[~self.level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
         self.level_1_train.loc[self.level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
         self.level_1_train["label"] = [self.level_label_dicts[1][x] for x in self.level_1_train.taxonID]
-        self.level_1_train = TreeDataset(df=self.level_1_train, config=self.config)
+        self.level_1_train_ds = TreeDataset(df=self.level_1_train, config=self.config)
         
         self.level_1_test = self.test_df.copy()
         self.level_1_test = self.level_1_test[~(self.level_1_test.taxonID=="PIPA2")]    
         self.level_1_test.loc[~self.level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
         self.level_1_test.loc[self.level_1_test.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
         self.level_1_test["label"] = [self.level_label_dicts[1][x] for x in self.level_1_test.taxonID]
-        self.level_1_test = TreeDataset(df=self.level_1_test, config=self.config)
+        self.level_1_test_ds = TreeDataset(df=self.level_1_test, config=self.config)
         
         ## Level 2
         broadleaf = [x for x in list(self.species_label_dict.keys()) if (not x in ["PICL","PIEL","PITA","PIPA2"]) & (not "QU" in x)]            
@@ -114,13 +114,13 @@ class MultiStage(LightningModule):
         self.level_2_train = self.level_2_train[~self.level_2_train.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]  
         self.level_2_train.loc[self.level_2_train.taxonID.str.contains("QU"),"taxonID"] = "OAK"
         self.level_2_train["label"] = [self.level_label_dicts[2][x] for x in self.level_2_train.taxonID]
-        self.level_2_train = TreeDataset(df=self.level_2_train, config=self.config)
+        self.level_2_train_ds = TreeDataset(df=self.level_2_train, config=self.config)
         
         self.level_2_test = self.test_df.copy()
         self.level_2_test = self.level_2_test[~self.level_2_test.taxonID.isin(["PICL","PIEL","PITA","PIPA2"])]  
         self.level_2_test.loc[self.level_2_test.taxonID.str.contains("QU"),"taxonID"] = "OAK"
         self.level_2_test["label"] = [self.level_label_dicts[2][x] for x in self.level_2_test.taxonID]
-        self.level_2_test = TreeDataset(df=self.level_2_test, config=self.config)
+        self.level_2_test_ds = TreeDataset(df=self.level_2_test, config=self.config)
         
         ## Level 3
         evergreen = [x for x in list(self.species_label_dict.keys()) if x in ["PICL","PIEL","PITA"]]         
@@ -130,12 +130,12 @@ class MultiStage(LightningModule):
         self.level_3_train = self.train_df.copy()
         self.level_3_train = self.level_3_train[self.level_3_train.taxonID.isin(["PICL","PIEL","PITA"])]  
         self.level_3_train["label"] = [self.level_label_dicts[3][x] for x in self.level_3_train.taxonID]
-        self.level_3_train = TreeDataset(df=self.level_3_train, config=self.config)
+        self.level_3_train_ds = TreeDataset(df=self.level_3_train, config=self.config)
         
         self.level_3_test = self.test_df.copy()
         self.level_3_test = self.level_3_test[self.level_3_test.taxonID.isin(["PICL","PIEL","PITA"])]  
         self.level_3_test["label"] = [self.level_label_dicts[3][x] for x in self.level_3_test.taxonID]
-        self.level_3_test = TreeDataset(df=self.level_3_test, config=self.config)
+        self.level_3_test_ds = TreeDataset(df=self.level_3_test, config=self.config)
         
         ## Level 4
         oak = [x for x in list(self.species_label_dict.keys()) if "QU" in x]
@@ -145,15 +145,15 @@ class MultiStage(LightningModule):
         self.level_4_train = self.train_df.copy()
         self.level_4_train = self.level_4_train[self.level_4_train.taxonID.str.contains("QU")]
         self.level_4_train["label"] = [self.level_label_dicts[4][x] for x in self.level_4_train.taxonID]
-        self.level_4_train = TreeDataset(df=self.level_4_train, config=self.config)
+        self.level_4_train_ds = TreeDataset(df=self.level_4_train, config=self.config)
         
         self.level_4_test = self.test_df.copy()
         self.level_4_test = self.level_4_test[self.level_4_test.taxonID.str.contains("QU")]
         self.level_4_test["label"] = [self.level_label_dicts[4][x] for x in self.level_4_test.taxonID]
-        self.level_4_test = TreeDataset(df=self.level_4_test, config=self.config)
+        self.level_4_test_ds = TreeDataset(df=self.level_4_test, config=self.config)
         
-        train_datasets = {0:self.level_0_train, 1:self.level_1_train,2:self.level_2_train,3:self.level_3_train,4:self.level_4_train}
-        test_datasets = [self.level_0_test, self.level_1_test,self.level_2_test,self.level_3_test,self.level_4_test]
+        train_datasets = {0:self.level_0_train_ds, 1:self.level_1_train_ds,2:self.level_2_train_ds,3:self.level_3_train_ds,4:self.level_4_train_ds}
+        test_datasets = [self.level_0_test_ds, self.level_1_test_ds,self.level_2_test_ds,self.level_3_test_ds,self.level_4_test_ds]
         
         return train_datasets, test_datasets
     
@@ -242,7 +242,7 @@ class MultiStage(LightningModule):
         self.log_dict(metric_dict, on_epoch=True, on_step=False)
         y_hat = F.softmax(y_hat)
         
-        return individual, y_hat  
+        return {"individual":individual, "yhat":y_hat}  
     
     def predict_step(self, batch, batch_idx, dataloader_idx):
         """Calculate predictions
@@ -253,6 +253,49 @@ class MultiStage(LightningModule):
         y_hat = F.softmax(y_hat)
         return individual, y_hat
     
+    def validation_epoch_end(self, validation_step_outputs): 
+        labels = [self.level_0_test.label, self.level_1_test.label,self.level_2_test.label, self.level_3_test.label, self.level_4_test.label]
+        for level, results in enumerate(validation_step_outputs):
+            labels = labels[level]
+            yhat = np.concatenate([x["yhat"] for x in results])
+            yhat = np.argmax(yhat, 1)
+            epoch_micro = torchmetrics.functional.accuracy(
+                preds=torch.tensor(labels),
+                target=torch.tensor(yhat),
+                average="micro")
+            
+            epoch_macro = torchmetrics.functional.accuracy(
+                preds=torch.tensor(labels),
+                target=torch.tensor(yhat),
+                average="macro",
+                num_classes=len(self.species_label_dict)
+            )
+            
+            self.log("Epoch Micro Accuracy", epoch_micro)
+            self.log("Epoch Macro Accuracy", epoch_macro)
+            
+            # Log results by species
+            taxon_accuracy = torchmetrics.functional.accuracy(
+                preds=yhat,
+                target=labels, 
+                average="none", 
+                num_classes=len(self.level_label_dicts[level])
+            )
+            taxon_precision = torchmetrics.functional.precision(
+                preds=yhat,
+                target=labels, 
+                average="none", 
+                num_classes=len(self.level_label_dicts[level])
+            )
+            species_table = pd.DataFrame(
+                {"taxonID":self.level_label_dicts[level].keys(),
+                 "accuracy":taxon_accuracy,
+                 "precision":taxon_precision
+                 })
+            
+            for key, value in species_table.set_index("taxonID").accuracy.to_dict().items():
+                self.log("Epoch_{}_accuracy".format(key), value)
+            
     def gather_predictions(self, predict_df, crowns, return_features=False):
         """Post-process the predict method to create metrics"""
         if return_features: 
@@ -332,7 +375,7 @@ class MultiStage(LightningModule):
             target=torch.tensor(ensemble_df.label.values),
             average="none",
             num_classes=len(self.species_label_dict)
-        )        
+        )
             
         taxon_precision = torchmetrics.functional.precision(
             preds=torch.tensor(ensemble_df.ens_label.values),
@@ -346,6 +389,9 @@ class MultiStage(LightningModule):
              "accuracy":taxon_accuracy,
              "precision":taxon_precision
              })
+        
+        print("Species table")
+        print(species_table)
         
         if experiment:
             experiment.log_metrics(species_table.set_index("taxonID").accuracy.to_dict(),prefix="accuracy")

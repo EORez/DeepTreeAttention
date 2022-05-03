@@ -217,8 +217,11 @@ class TreeDataset(Dataset):
     Args:
        csv_file: path to csv file with image_path and label
     """
-    def __init__(self, csv_file, config=None, train=True, HSI=True, metadata=False):
-        self.annotations = pd.read_csv(csv_file)
+    def __init__(self, csv_file=None, df=None, config=None, train=True, HSI=True, metadata=False):            
+        if csv_file:
+            self.annotations = pd.read_csv(csv_file)
+        else:
+            self.annotations = df
         self.train = train
         self.HSI = HSI
         self.metadata = metadata
@@ -530,14 +533,14 @@ class TreeData(LightningDataModule):
             
             #Create dataloaders
             self.train_ds = TreeDataset(
-                csv_file = "{}/train.csv".format(self.data_dir),
+                df=self.train,
                 config=self.config,
                 HSI=self.HSI,
                 metadata=self.metadata
             )
     
             self.val_ds = TreeDataset(
-                csv_file = "{}/test.csv".format(self.data_dir),
+                df=self.test,
                 config=self.config,
                 HSI=self.HSI,
                 metadata=self.metadata

@@ -491,6 +491,7 @@ class TreeData(LightningDataModule):
             self.train = self.train[self.train.taxonID.isin(species_to_keep)]
             self.test = pd.read_csv("{}/test.csv".format(self.data_dir))
             self.test = self.test[self.test.taxonID.isin(species_to_keep)]            
+            
             self.crowns = gpd.read_file("{}/crowns.shp".format(self.data_dir))
             #mimic schema due to abbreviation when .shp is saved
             self.crowns["individualID"] = self.crowns["individual"]
@@ -518,6 +519,10 @@ class TreeData(LightningDataModule):
             self.num_sites = len(self.site_label_dict)                   
             
             self.label_to_taxonID = {v: k  for k, v in self.species_label_dict.items()}
+            
+            #remake label dict
+            self.test["label"] = self.test.taxonID.apply(lambda x: self.species_label_dict[x])
+            self.train["label"] = self.train.taxonID.apply(lambda x: self.species_label_dict[x])
             
             #Create dataloaders
             self.train_ds = TreeDataset(

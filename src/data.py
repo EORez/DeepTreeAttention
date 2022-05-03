@@ -400,7 +400,7 @@ class TreeData(LightningDataModule):
             )
             
             #hard sampling cutoff
-            annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
+            annotations = annotations.groupby("taxonID").apply(lambda x: x.sample(frac=1).head(self.config["sampling_ceiling"])).reset_index(drop=True)
             annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:

@@ -151,13 +151,13 @@ for min_train in [10, 20, 30, 50, 100, 150, 200, 1000, 5000]:
         preds=torch.tensor(results.pred_label_top1.values),
         target=torch.tensor(results.label.values), 
         average="micro", 
-        num_classes=data_module.classes
+        num_classes=data_module.num_classes
     )
     macro_acc = torchmetrics.functional.precision(
         preds=torch.tensor(results.pred_label_top1.values),
         target=torch.tensor(results.label.values),
         average="macro",
-        num_classes=data_module.classes)
+        num_classes=data_module.num_classes)
     
     micro_list.append(micro_acc)
     macro_list.append(macro_acc)

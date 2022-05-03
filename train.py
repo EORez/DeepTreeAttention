@@ -162,7 +162,7 @@ for min_train in [10, 20, 30, 50, 100, 150, 200, 1000, 5000]:
     micro_list.append(micro_acc)
     macro_list.append(macro_acc)
 
-pd.DataFrame({"min_train_samples":[10, 20, 30, 50, 100, 150, 200, 1000, 5000],
+pd.DataFrame({"min_train_samples":[10, 20, 30, 50, 100, 200, 500, 1000],
               "micro_acc":micro_list,
               "macro_acc":macro_list}
              ).to_csv("results/all_sites_train_curve.csv")

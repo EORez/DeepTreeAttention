@@ -524,6 +524,10 @@ class TreeData(LightningDataModule):
             self.test["label"] = self.test.taxonID.apply(lambda x: self.species_label_dict[x])
             self.train["label"] = self.train.taxonID.apply(lambda x: self.species_label_dict[x])
             
+            self.index_to_label = {}
+            for x in label_dict:
+                self.index_to_label[label_dict[x]] = x 
+            
             #Create dataloaders
             self.train_ds = TreeDataset(
                 csv_file = "{}/train.csv".format(self.data_dir),

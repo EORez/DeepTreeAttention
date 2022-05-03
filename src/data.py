@@ -486,7 +486,7 @@ class TreeData(LightningDataModule):
         else:
             print("Loading previous run")            
             self.train = pd.read_csv("{}/train.csv".format(self.data_dir))
-            counts = counts = train.taxonID.value_counts() > self.config["min_train_samples"]
+            counts = self.train.taxonID.value_counts() > self.config["min_train_samples"]
             species_to_keep = counts[counts].index
             self.train = self.train[self.train.taxonID.isin(species_to_keep)]
             self.test = self.test[self.test.taxonID.isin(species_to_keep)]

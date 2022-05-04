@@ -22,7 +22,7 @@ max_CHM_diff: 4
 CHM_height_limit: 8
 
 #Megaplot XY Data, these are .shp files saved as the siteID
-megaplot_dir: /orange/idtrees-collab/megaplot/
+megaplot_dir:
 
 #Crop generation, whether to make a new dataset and customize which parts to recreate
 #Checkout data artifact from comet

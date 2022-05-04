@@ -17,7 +17,7 @@ def test_MultiStage(dm, config):
     assert len(train_dict) == 5
     
 def test_fit(config, dm, comet_logger):
-    m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.train, crowns=dm.crowns, config=config)
+    m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.test, crowns=dm.crowns, config=config)
     trainer = Trainer(fast_dev_run=False, logger=comet_logger)
     trainer.fit(m)
     

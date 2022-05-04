@@ -254,9 +254,9 @@ class MultiStage(LightningModule):
         return individual, y_hat
     
     def validation_epoch_end(self, validation_step_outputs): 
-        labels = [self.level_0_test.label, self.level_1_test.label,self.level_2_test.label, self.level_3_test.label, self.level_4_test.label]
+        label_list = [self.level_0_test.label, self.level_1_test.label,self.level_2_test.label, self.level_3_test.label, self.level_4_test.label]
         for level, results in enumerate(validation_step_outputs):
-            labels = labels[level]
+            labels = label_list[level]
             yhat = np.concatenate([x["yhat"] for x in results])
             yhat = np.argmax(yhat, 1)
             epoch_micro = torchmetrics.functional.accuracy(

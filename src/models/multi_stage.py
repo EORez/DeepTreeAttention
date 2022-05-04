@@ -260,12 +260,12 @@ class MultiStage(LightningModule):
             yhat = np.concatenate([x["yhat"] for x in results])
             yhat = np.argmax(yhat, 1)
             epoch_micro = torchmetrics.functional.accuracy(
-                preds=torch.tensor(labels),
+                preds=torch.tensor(labels.values),
                 target=torch.tensor(yhat),
                 average="micro")
             
             epoch_macro = torchmetrics.functional.accuracy(
-                preds=torch.tensor(labels),
+                preds=torch.tensor(labels.values),
                 target=torch.tensor(yhat),
                 average="macro",
                 num_classes=len(self.species_label_dict)
@@ -276,14 +276,14 @@ class MultiStage(LightningModule):
             
             # Log results by species
             taxon_accuracy = torchmetrics.functional.accuracy(
-                preds=yhat,
-                target=labels, 
+                preds=torch.tensor(yhat),
+                target=torch.tensor(labels.values), 
                 average="none", 
                 num_classes=len(self.level_label_dicts[level])
             )
             taxon_precision = torchmetrics.functional.precision(
-                preds=yhat,
-                target=labels, 
+                preds=torch.tensor(yhat),
+                target=torch.tensor(labels.values), 
                 average="none", 
                 num_classes=len(self.level_label_dicts[level])
             )

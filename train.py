@@ -26,7 +26,7 @@ git_commit=sys.argv[2]
 
 micro_list = []
 macro_list = []
-for min_train in [10, 20, 30, 50, 100, 150, 200, 1000, 5000]:
+for min_train in [5, 10, 20, 30, 50, 100, 150, 200, 500]:
     #Create datamodule
     config = data.read_config("config.yml")
     config["min_train_samples"] = min_train

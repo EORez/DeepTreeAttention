@@ -23,12 +23,12 @@ from pandas.util import hash_pandas_object
 #Get branch name for the comet tag
 git_branch=sys.argv[1]
 git_commit=sys.argv[2]
+config = data.read_config("config.yml")
 
 micro_list = []
 macro_list = []
 for min_train in [5, 10, 20, 30, 50, 100, 150, 200, 500]:
     #Create datamodule
-    config = data.read_config("config.yml")
     config["min_train_samples"] = min_train
     comet_logger = CometLogger(project_name="DeepTreeAttention", workspace=config["comet_workspace"], auto_output_logging="simple")    
     
@@ -162,7 +162,7 @@ for min_train in [5, 10, 20, 30, 50, 100, 150, 200, 500]:
     micro_list.append(micro_acc)
     macro_list.append(macro_acc)
 
-pd.DataFrame({"min_train_samples":[5, 10, 20, 30, 50, 100, 150, 200, 500],
+pd.DataFrame({"min_train_samples":[5, 10, 20, 30, 50, 100, 150, 200],
               "micro_acc":micro_list,
               "macro_acc":macro_list}
              ).to_csv("results/all_sites_train_curve.csv")

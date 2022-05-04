@@ -27,7 +27,7 @@ config = data.read_config("config.yml")
 
 micro_list = []
 macro_list = []
-for min_train in [5, 10, 20, 30, 50, 100, 150, 200, 500]:
+for min_train in [5, 10, 20, 30, 50, 100, 150, 200]:
     #Create datamodule
     config["min_train_samples"] = min_train
     comet_logger = CometLogger(project_name="DeepTreeAttention", workspace=config["comet_workspace"], auto_output_logging="simple")    

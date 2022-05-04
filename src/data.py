@@ -113,9 +113,9 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
         min_samples: minimum number of samples per class
         iteration: a dummy parameter to make dask submission unique
     """
-    test = shp[shp.plotID.str.contains("IFAS")]
-    test = test[test.taxonID.isin(train.taxonID)]    
-    train = shp[shp.individualID.str.contains("NEON")]
+    train = shp[shp.plotID.str.contains("IFAS")]
+    train = train[train.taxonID.isin(train.taxonID)]    
+    test = shp[shp.individualID.str.contains("NEON")]
 
     return train, test
 

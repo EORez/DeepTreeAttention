@@ -115,36 +115,8 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
     """
     #split by plot level
     plotIDs = list(shp.plotID.unique())
-    if len(plotIDs) <=2:
-        test = shp[shp.plotID == shp.plotID.unique()[0]]
-        train = shp[shp.plotID == shp.plotID.unique()[1]]
-
-        return train, test
-    else:
-        plotIDs = shp[shp.siteID=="OSBS"].plotID.unique()
-
-    np.random.shuffle(plotIDs)
-    species_to_sample = shp.taxonID.unique()
-    test_plots = []
-    for plotID in plotIDs:
-        selected_plot = shp[shp.plotID == plotID]
-        # If any species is missing from min samples, include plot
-        for x in selected_plot.taxonID.unique():
-            if x in species_to_sample:
-                test_plots.append(plotID)
-                # Update species list                
-                counts = shp[shp.plotID.isin(test_plots)].taxonID.value_counts()                
-                species_completed = counts[counts > min_test_samples].index.tolist()
-                species_to_sample = [x for x in shp.taxonID.unique() if not x in species_completed]
-                
-    test = shp[shp.plotID.isin(test_plots)]
-    train = shp[~shp.plotID.isin(test.plotID.unique())]
-
-    # Remove fixed boxes from test
-    test = test.loc[~test["box_id"].astype(str).str.contains("fixed").fillna(False)]    
-    test = test.groupby("taxonID").filter(lambda x: x.shape[0] >= min_test_samples)
-    train = train[train.taxonID.isin(test.taxonID)]    
-    test = test[test.taxonID.isin(train.taxonID)]
+    test = shp.groupby("taxonID").apply(lambda x: x.sample(frac=0.15))
+    train = shp[shp.individual.isin(test.individual)]
 
     return train, test
 

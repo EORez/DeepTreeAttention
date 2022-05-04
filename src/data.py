@@ -116,7 +116,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
     #split by plot level
     plotIDs = list(shp.plotID.unique())
     test = shp.groupby("taxonID").apply(lambda x: x.sample(frac=0.2))
-    train = shp[shp.individualID.isin(test.individualID)]
+    train = shp[~shp.individualID.isin(test.individualID)]
 
     return train, test
 

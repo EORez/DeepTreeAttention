@@ -27,6 +27,7 @@ config = data.read_config("config.yml")
 
 micro_list = []
 macro_list = []
+species = []
 for min_train in [3, 5, 10, 20, 30, 50, 100, 150, 200]:
     #Create datamodule
     config["min_train_samples"] = min_train

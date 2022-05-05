@@ -116,6 +116,7 @@ for x in range(5):
     #Get a test dataset for IFAS data
     with comet_logger.experiment.context_manager("IFAS"):
         ifas_dataset = data_module.annotations[data_module.annotations.plotID.str.contains("IFAS")].groupby("taxonID").apply(lambda x: x.sample(frac=1).head(20))
+        ifas_dataset = ifas_dataset.reset_index(drop=True)
         
         #Create dataloaders
         IFAS_ds = data.TreeDataset(

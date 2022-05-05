@@ -115,7 +115,7 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
     """
     shp = shp[shp.individualID.str.contains("NEON")]
     train = shp.groupby("taxonID").apply(lambda x: x.sample(frac=0.2))
-    test = test[~shp.individualID.isin(train.individualID)]
+    test = shp[~shp.individualID.isin(train.individualID)]
     
     return train, test
 

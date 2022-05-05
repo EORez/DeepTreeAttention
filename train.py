@@ -120,9 +120,7 @@ for x in range(5):
         #Create dataloaders
         IFAS_ds = data.TreeDataset(
             df = ifas_dataset,
-            config=self.config,
-            HSI=self.HSI,
-            metadata=self.metadata
+            config=data_module.config
         )
         
         data_loader = torch.utils.data.DataLoader(

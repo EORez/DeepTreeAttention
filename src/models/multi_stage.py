@@ -240,7 +240,7 @@ class MultiStage(LightningModule):
         self.log("val_loss",loss)
         metric_dict = self.models[dataloader_idx].metrics(y_hat, y)
         self.log_dict(metric_dict, on_epoch=True, on_step=False)
-        y_hat = F.softmax(y_hat)
+        y_hat = F.softmax(y_hat, dim=1)
         
         return {"individual":individual, "yhat":y_hat}  
     
@@ -250,7 +250,7 @@ class MultiStage(LightningModule):
         individual, inputs, y = batch
         images = inputs["HSI"]  
         y_hat = self.models[dataloader_idx].forward(images)
-        y_hat = F.softmax(y_hat, dim =1)
+        y_hat = F.softmax(y_hat, dim=1)
         return individual, y_hat
     
     def validation_epoch_end(self, validation_step_outputs): 

@@ -22,8 +22,12 @@ from pandas.util import hash_pandas_object
 git_branch=sys.argv[1]
 git_commit=sys.argv[2]
 
-micro = []
-macro = []
+NEON_micro = []
+NEON_macro = []
+
+IFAS_micro = []
+IFAS_macro = []
+
 client = start_cluster.start(cpus=5, mem_size="8GB")    
 for x in range(5):
     #Create datamodule
@@ -101,11 +105,37 @@ for x in range(5):
     trainer.fit(m, datamodule=data_module)
     #Save model checkpoint
     trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
-    results = m.evaluate_crowns(
-        data_module.val_dataloader(),
-        crowns = data_module.crowns,
-        experiment=comet_logger.experiment,
-    )
+    with comet_logger.experiment.context_manager("NEON"):
+        results = m.evaluate_crowns(
+            data_module.val_dataloader(),
+            crowns = data_module.crowns,
+            experiment=comet_logger.experiment,
+        )
+    
+    #Get a test dataset for IFAS data
+    with comet_logger.experiment.context_manager("IFAS"):
+        ifas_dataset = data_module.annotations[annotations.plotID.str.contains("IFAS")].groupby("taxonID").apply(lambda x.sample(head=20))
+        
+        #Create dataloaders
+        IFAS_ds = TreeDataset(
+            df = ifas_dataset,
+            config=self.config,
+            HSI=self.HSI,
+            metadata=self.metadata
+        )
+        
+        data_loader = torch.utils.data.DataLoader(
+            IFAS_ds,
+            batch_size=data_module.config["batch_size"],
+            shuffle=False,
+            num_workers=data_module.config["workers"],
+        )
+        
+        results = m.evaluate_crowns(
+            data_loader,
+            crowns = data_module.crowns,
+            experiment=comet_logger.experiment,
+        )        
     rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
     
     #Visualizations
@@ -117,6 +147,7 @@ for x in range(5):
         test_points=data_module.canopy_points,
         plot_n_individuals=config["plot_n_individuals"],
         experiment=comet_logger.experiment)
+    
     visualize.confusion_matrix(
         comet_experiment=comet_logger.experiment,
         results=results,
@@ -140,8 +171,10 @@ for x in range(5):
     within_plot_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=plot_lists)
     comet_logger.experiment.log_metric("within_plot_confusion", within_plot_confusion)
     
-    micro.append(comet_logger.experiment.get_metric("OSBS_micro"))
-    micro.append(comet_logger.experiment.get_metric("OSBS_macro"))
+    NEON_micro.append(comet_logger.experiment.get_metric("OSBS_micro_NEON"))
+    NEON_macro.append(comet_logger.experiment.get_metric("OSBS_macro_NEON"))
+    IFAS_micro.append(comet_logger.experiment.get_metric("OSBS_micro_IFAS"))
+    IFAS_micro.append(comet_logger.experiment.get_metric("OSBS_macro_IFAS"))    
     
-df = pd.DataFrame({"micro":micro,"macro":macro,"train":"IFAS","test":"NEON"})
+df = pd.DataFrame({"NEON_micro":NEON_micro,"NEON_macro":NEON_macro,"IFAS_micro":IFAS_micro,"IFAS_macro":IFAS_macro,"train":"IFAS","test":"NEON"})
 df.to_csv("results/IFAS_predicts_NEON_OSBS.csv")

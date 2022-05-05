@@ -113,10 +113,10 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
         min_samples: minimum number of samples per class
         iteration: a dummy parameter to make dask submission unique
     """
-    test = shp[shp.plotID.str.contains("IFAS")]
-    train = shp[shp.individualID.str.contains("NEON")]
-    test = test[test.taxonID.isin(train.taxonID)]    
-
+    shp = shp[shp.individualID.str.contains("NEON")]
+    train = shp.groupby("taxonID").apply(lambda x: x.sample(frac=0.2))
+    test = test[~shp.individualID.isin(train.individualID)]
+    
     return train, test
 
 
@@ -188,8 +188,12 @@ class TreeDataset(Dataset):
     Args:
        csv_file: path to csv file with image_path and label
     """
-    def __init__(self, csv_file, config=None, train=True, HSI=True, metadata=False):
-        self.annotations = pd.read_csv(csv_file)
+    def __init__(self, csv_file=None, df=None, config=None, train=True, HSI=True, metadata=False):
+        if csv_file:
+            self.annotations = pd.read_csv(csv_file)
+        else:
+            self.annotations = df
+            
         self.train = train
         self.HSI = HSI
         self.metadata = metadata

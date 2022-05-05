@@ -250,21 +250,14 @@ class MultiStage(LightningModule):
         individual, inputs, y = batch
         images = inputs["HSI"]  
         y_hat = self.models[dataloader_idx].forward(images)
-        y_hat = F.softmax(y_hat)
+        y_hat = F.softmax(y_hat, dim =1)
         return individual, y_hat
     
     def validation_epoch_end(self, validation_step_outputs): 
         label_list = [self.level_0_test.label, self.level_1_test.label,self.level_2_test.label, self.level_3_test.label, self.level_4_test.label]
         for level, results in enumerate(validation_step_outputs):
             labels = label_list[level]
-            
-            try:
-                yhat = np.concatenate([x["yhat"].cpu() for x in results])
-            except Exception as e:
-                print("Length of results is {}".format(len(results)))
-                print(results)
-                raise e
-            
+            yhat = np.concatenate([x["yhat"].cpu() for x in results])
             yhat = np.argmax(yhat, 1)
             epoch_micro = torchmetrics.functional.accuracy(
                 preds=torch.tensor(labels.values),

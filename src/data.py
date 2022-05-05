@@ -370,7 +370,7 @@ class TreeData(LightningDataModule):
             else:
                 self.crowns = gpd.read_file("{}/crowns.shp".format(self.data_dir))
                     
-            annotations = generate.generate_crops(
+            self.annotations = generate.generate_crops(
                 self.crowns,
                 savedir=self.data_dir,
                 sensor_glob=self.config["HSI_sensor_pool"],
@@ -382,27 +382,27 @@ class TreeData(LightningDataModule):
             )
             
             #hard sampling cutoff
-            annotations = annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
-            annotations.to_csv("{}/annotations.csv".format(self.data_dir))
+            self.annotations = self.annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
+            self.annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:
-                self.comet_logger.experiment.log_parameter("Species after crop generation",len(annotations.taxonID.unique()))
-                self.comet_logger.experiment.log_parameter("Samples after crop generation",annotations.shape[0])
+                self.comet_logger.experiment.log_parameter("Species after crop generation",len(self.annotations.taxonID.unique()))
+                self.comet_logger.experiment.log_parameter("Samples after crop generation",self.annotations.shape[0])
             
             #Remove crowns from test dataset if specified
             if self.config["existing_test_csv"]:
                 existing_test = pd.read_csv(self.config["existing_test_csv"])
-                self.test = annotations[annotations.individualID.isin(existing_test.individualID)]  
+                self.test = self.annotations[self.annotations.individualID.isin(existing_test.individualID)]  
                 existing_train = pd.read_csv(os.path.join(os.path.dirname(self.config["existing_test_csv"]),"train.csv"))
-                self.train = annotations[annotations.individualID.isin(existing_train.individualID)]
+                self.train = self.annotations[self.annotations.individualID.isin(existing_train.individualID)]
             else:
-                self.train, self.test = train_test_split(annotations, config=self.config, client=self.client) 
+                self.train, self.test = train_test_split(self.annotations, config=self.config, client=self.client) 
             self.train.to_csv("{}/train.csv".format(self.data_dir))
             self.test.to_csv("{}/test.csv".format(self.data_dir))
 
             # Capture discarded species
             individualIDs = np.concatenate([self.train.individualID.unique(), self.test.individualID.unique()])
-            self.novel = annotations[~annotations.individualID.isin(individualIDs)]
+            self.novel = self.annotations[~self.annotations.individualID.isin(individualIDs)]
             self.novel = self.novel[~self.novel.taxonID.isin(np.concatenate([self.train.taxonID.unique(), self.test.taxonID.unique()]))]
             self.novel.to_csv("{}/novel_species.csv".format(self.data_dir))
             

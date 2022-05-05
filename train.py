@@ -27,7 +27,7 @@ config = data.read_config("config.yml")
 
 micro_list = []
 macro_list = []
-for min_train in [5, 10, 20, 30, 50, 100, 150, 200]:
+for min_train in [3, 5, 10, 20, 30, 50, 100, 150, 200]:
     #Create datamodule
     config["min_train_samples"] = min_train
     comet_logger = CometLogger(project_name="DeepTreeAttention", workspace=config["comet_workspace"], auto_output_logging="simple")    
@@ -106,7 +106,7 @@ for min_train in [5, 10, 20, 30, 50, 100, 150, 200]:
     
     trainer.fit(m, datamodule=data_module)
     #Save model checkpoint
-    trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
+    #trainer.save_checkpoint("/blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/{}.pl".format(comet_logger.experiment.id))
     results = m.evaluate_crowns(
         data_module.val_dataloader(),
         crowns = data_module.crowns,
@@ -161,9 +161,11 @@ for min_train in [5, 10, 20, 30, 50, 100, 150, 200]:
     
     micro_list.append(micro_acc)
     macro_list.append(macro_acc)
+    species.append(data_module.num_classes)
 
-pd.DataFrame({"min_train_samples":[5, 10, 20, 30, 50, 100, 150, 200],
+pd.DataFrame({"min_train_samples":[3, 5, 10, 20, 30, 50, 100, 150, 200],
               "micro_acc":micro_list,
-              "macro_acc":macro_list}
+              "macro_acc":macro_list,
+              "num_classes":species}
              ).to_csv("results/all_sites_train_curve.csv")
     

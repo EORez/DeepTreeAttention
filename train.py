@@ -4,6 +4,7 @@ import glob
 import geopandas as gpd
 import os
 import numpy as np
+import torch
 from src import main
 from src import data
 from src import start_cluster
@@ -117,7 +118,7 @@ for x in range(5):
         ifas_dataset = data_module.annotations[annotations.plotID.str.contains("IFAS")].groupby("taxonID").apply(lambda x.sample(head=20))
         
         #Create dataloaders
-        IFAS_ds = TreeDataset(
+        IFAS_ds = data.TreeDataset(
             df = ifas_dataset,
             config=self.config,
             HSI=self.HSI,
@@ -174,7 +175,7 @@ for x in range(5):
     NEON_micro.append(comet_logger.experiment.get_metric("OSBS_micro_NEON"))
     NEON_macro.append(comet_logger.experiment.get_metric("OSBS_macro_NEON"))
     IFAS_micro.append(comet_logger.experiment.get_metric("OSBS_micro_IFAS"))
-    IFAS_micro.append(comet_logger.experiment.get_metric("OSBS_macro_IFAS"))    
+    IFAS_macro.append(comet_logger.experiment.get_metric("OSBS_macro_IFAS"))    
     
-df = pd.DataFrame({"NEON_micro":NEON_micro,"NEON_macro":NEON_macro,"IFAS_micro":IFAS_micro,"IFAS_macro":IFAS_macro,"train":"IFAS","test":"NEON"})
+df = pd.DataFrame({"NEON_micro":NEON_micro,"NEON_macro":NEON_macro,"IFAS_micro":IFAS_micro,"IFAS_macro":IFAS_macro,"train":"IFAS"})
 df.to_csv("results/IFAS_predicts_NEON_OSBS.csv")

@@ -257,7 +257,14 @@ class MultiStage(LightningModule):
         label_list = [self.level_0_test.label, self.level_1_test.label,self.level_2_test.label, self.level_3_test.label, self.level_4_test.label]
         for level, results in enumerate(validation_step_outputs):
             labels = label_list[level]
-            yhat = np.concatenate([x["yhat"].cpu() for x in results])
+            
+            try:
+                yhat = np.concatenate([x["yhat"].cpu() for x in results])
+            except Exception as e:
+                print("Length of results is {}".format(len(results)))
+                print(results)
+                raise e
+            
             yhat = np.argmax(yhat, 1)
             epoch_micro = torchmetrics.functional.accuracy(
                 preds=torch.tensor(labels.values),

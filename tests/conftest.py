@@ -65,7 +65,7 @@ def config(ROOT):
     config["HSI_sensor_pool"] = "{}/tests/data/*.tif".format(ROOT)
     config["min_train_samples"] = 1
     config["min_test_samples"] = 1
-    config["crop_dir"] = "{}/tests/data/2fc85646a96f4570942783aa8897bdae/".format(ROOT)
+    config["crop_dir"] = "{}/tests/data/ebb00ad072d542d083a70b610a08ce0d/".format(ROOT)
     config["bands"] = 349
     config["classes"] = 3
     config["top_k"] = 1
@@ -75,7 +75,7 @@ def config(ROOT):
     config["dead_model"] = None
     config["dead_threshold"] = 0.95
     config["megaplot_dir"] = None
-    config["use_data_commit"] = "2fc85646a96f4570942783aa8897bdae"
+    config["use_data_commit"] = "ebb00ad072d542d083a70b610a08ce0d"
     config["dead"]["epochs"] = 1
     config["pretrain_state_dict"] = None
     config["batch_size"] = 2
@@ -88,7 +88,7 @@ def config(ROOT):
 #Data module
 @pytest.fixture(scope="session")
 def dm(config, ROOT):
-    dm = data.TreeData(config=config, csv_file=None, data_dir="{}/tests/data/2fc85646a96f4570942783aa8897bdae".format(ROOT), debug=True) 
+    dm = data.TreeData(config=config, csv_file=None, data_dir="{}/tests/data/ebb00ad072d542d083a70b610a08ce0d".format(ROOT), debug=True) 
     dm.setup()  
     
     return dm

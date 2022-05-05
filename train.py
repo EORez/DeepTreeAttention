@@ -115,7 +115,6 @@ visualize.confusion_matrix(
     rgb_pool=rgb_pool
 )
 
-
 #Within site confusion
 site_lists = data_module.train.groupby("label").site.unique()
 within_site_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.ens_label, site_lists=site_lists)

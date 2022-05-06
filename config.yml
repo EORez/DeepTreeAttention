@@ -45,6 +45,7 @@ image_size: 11
 preload_images: True
 workers: 0
 sampling_ceiling: 200
+oaks_sampling_ceiling: 60
 
 #Network Parameters
 pretrain_state_dict: /blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/3febd94f4aa64244bf91e6714b987106.pt

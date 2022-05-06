@@ -141,10 +141,12 @@ class MultiStage(LightningModule):
         oak = [x for x in list(self.species_label_dict.keys()) if "QU" in x]
         self.level_label_dicts[4] =  {v:k for k, v in enumerate(oak)}
         self.label_to_taxonIDs[4] = {v: k  for k, v in self.level_label_dicts[4].items()}
-                    
+        
+        #Balance the train in OAKs
         self.level_4_train = self.train_df.copy()
         self.level_4_train = self.level_4_train[self.level_4_train.taxonID.str.contains("QU")]
         self.level_4_train["label"] = [self.level_label_dicts[4][x] for x in self.level_4_train.taxonID]
+        self.level_4_train = self.level_4_train.groupby("taxonID").apply(lambda x:x.sample(frac=1).head(self.config["oaks_sampling_ceiling"])).reset_index(drop=True)
         self.level_4_train_ds = TreeDataset(df=self.level_4_train, config=self.config)
         
         self.level_4_test = self.test_df.copy()
@@ -226,7 +228,7 @@ class MultiStage(LightningModule):
         images = inputs["HSI"]  
         y_hat = self.models[optimizer_idx].forward(images)
         loss = F.cross_entropy(y_hat, y, weight=self.loss_weights[optimizer_idx])    
-        self.log("train_loss",loss, on_epoch=True, on_step=False)
+        self.log("train_loss_{}".format(optimizer_idx),loss, on_epoch=True, on_step=False)
 
         return loss        
     

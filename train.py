@@ -115,9 +115,11 @@ for x in range(5):
     #Get a test dataset for IFAS data
     with comet_logger.experiment.context_manager("IFAS"):
         ifas_dataset = data_module.annotations[data_module.annotations.plotID.str.contains("IFAS")].groupby("taxonID").apply(lambda x: x.sample(frac=1).head(20))
-        ifas_dataset = ifas_dataset[ifas_dataset.taxonID.isin([data_module.train.taxonID])]
+        ifas_dataset = ifas_dataset[ifas_dataset.taxonID.isin(data_module.train.taxonID)]
         ifas_dataset = ifas_dataset.reset_index(drop=True)
         ifas_dataset["label"] = ifas_dataset.taxonID.apply(lambda x: data_module.species_label_dict[x])
+        #save
+        ifas_dataset.to_csv(os.path.join(data_module.data_dir, "ifas_dataset.csv"))
         
         #Create dataloaders
         IFAS_ds = data.TreeDataset(
@@ -133,7 +135,7 @@ for x in range(5):
         )
         
         results = m.evaluate_crowns(
-            data_loader,
+            data_loader=data_loader,
             crowns = data_module.crowns,
             experiment=comet_logger.experiment,
         )        
@@ -161,16 +163,6 @@ for x in range(5):
     
     #Log prediction
     comet_logger.experiment.log_table("test_predictions.csv", results)
-    
-    #Within site confusion
-    site_lists = data_module.train.groupby("label").site.unique()
-    within_site_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=site_lists)
-    comet_logger.experiment.log_metric("within_site_confusion", within_site_confusion)
-    
-    #Within plot confusion
-    plot_lists = data_module.train.groupby("label").plotID.unique()
-    within_plot_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.pred_label_top1, site_lists=plot_lists)
-    comet_logger.experiment.log_metric("within_plot_confusion", within_plot_confusion)
     
     NEON_micro.append(comet_logger.experiment.get_metric("OSBS_micro_NEON"))
     NEON_macro.append(comet_logger.experiment.get_metric("OSBS_macro_NEON"))

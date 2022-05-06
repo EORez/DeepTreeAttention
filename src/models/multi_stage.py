@@ -226,6 +226,7 @@ class MultiStage(LightningModule):
         images = inputs["HSI"]  
         y_hat = self.models[optimizer_idx].forward(images)
         loss = F.cross_entropy(y_hat, y, weight=self.loss_weights[optimizer_idx])    
+        self.log("train_loss",loss, on_epoch=True, on_step=False)
 
         return loss        
     

@@ -77,7 +77,8 @@ class MultiStage(LightningModule):
         
         self.level_0_train = self.train_df.copy()
         self.level_0_train.loc[~(self.level_0_train.taxonID == "PIPA2"),"taxonID"] = "OTHER"
-        self.level_0_train.loc[(self.level_0_train.taxonID == "PIPA2"),"taxonID"] = "PIPA2"            
+        self.level_0_train.loc[(self.level_0_train.taxonID == "PIPA2"),"taxonID"] = "PIPA2"  
+        self.level_0_train = self.level_0_train.groupby("taxonID").apply(lambda x:x.sample(frac=1).head(self.config["PIPA2_sampling_ceiling"])).reset_index(drop=True)        
         self.level_0_train["label"] = [self.level_label_dicts[0][x] for x in self.level_0_train.taxonID]
         self.level_0_train_ds = TreeDataset(df=self.level_0_train, config=self.config)
         
@@ -209,7 +210,7 @@ class MultiStage(LightningModule):
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                              mode='min',
                                                              factor=0.75,
-                                                             patience=2,
+                                                             patience=10,
                                                              verbose=True,
                                                              threshold=0.0001,
                                                              threshold_mode='rel',

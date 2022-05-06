@@ -119,7 +119,9 @@ visualize.confusion_matrix(
 
 for x in range(len(m.models)):
     label_list = [m.level_0_test, m.level_1_test,m.level_2_test, m.level_3_test, m.level_4_test]
-    confusion_results = results.merge(label_list[x],on='individual')
+    test_df = label_list[x]
+    test_df["individual"] = test_df["individualID"]
+    confusion_results = results.merge(test_df,on='individual')
     confusion_results["pred_taxa_top1"] = confusion_results["pred_taxa_top1_level_{}".format(x)]
     confusion_results["pred_label_top1"] = confusion_results["pred_label_top1_level_{}".format(x)]   
     

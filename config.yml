@@ -46,14 +46,14 @@ preload_images: True
 workers: 0
 oaks_sampling_ceiling: 100
 PIPA2_sampling_ceiling: 1000
-broadleaf_ceiling: 250
+broadleaf_ceiling: 1000
 
 #Network Parameters
 pretrain_state_dict: /blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/3febd94f4aa64244bf91e6714b987106.pt
 gpus: 1
 batch_size: 128
 bands: 349
-lr_0: 0.00001
+lr_0: 0.000001
 lr_1: 0.000001
 lr_2: 0.00005
 lr_3: 0.0001

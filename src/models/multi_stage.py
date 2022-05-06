@@ -59,6 +59,8 @@ class MultiStage(LightningModule):
                 loss_weight.append(1/np.sum(labels==x))
 
             loss_weight = np.array(loss_weight/np.max(loss_weight))
+            loss_weight[loss_weight < 0.5] = 0.5  
+            
             if torch.cuda.is_available():
                 loss_weight = torch.tensor(loss_weight, device="cuda", dtype=torch.float)
             else:

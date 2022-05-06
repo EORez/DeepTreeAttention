@@ -68,7 +68,6 @@ for x in range(5):
     if not config["use_data_commit"]:
         comet_logger.experiment.log_table("novel_species.csv", data_module.novel)
     
-    
     #Load from state dict of previous run
     if config["pretrain_state_dict"]:
         model = Hang2020.load_from_backbone(state_dict=config["pretrain_state_dict"], classes=data_module.num_classes, bands=config["bands"])
@@ -116,6 +115,7 @@ for x in range(5):
     #Get a test dataset for IFAS data
     with comet_logger.experiment.context_manager("IFAS"):
         ifas_dataset = data_module.annotations[data_module.annotations.plotID.str.contains("IFAS")].groupby("taxonID").apply(lambda x: x.sample(frac=1).head(20))
+        ifas_dataset = ifas_dataset[ifas_dataset.taxonID.isin([data_module.train.taxonID])]
         ifas_dataset = ifas_dataset.reset_index(drop=True)
         ifas_dataset["label"] = ifas_dataset.taxonID.apply(lambda x: data_module.species_label_dict[x])
         

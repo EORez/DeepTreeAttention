@@ -96,7 +96,8 @@ class MultiStage(LightningModule):
         self.level_1_train = self.train_df.copy()
         self.level_1_train = self.level_1_train[~(self.level_1_train.taxonID=="PIPA2")]    
         self.level_1_train.loc[~self.level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "BROADLEAF"   
-        self.level_1_train.loc[self.level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER"            
+        self.level_1_train.loc[self.level_1_train.taxonID.isin(["PICL","PIEL","PITA"]),"taxonID"] = "CONIFER" 
+        self.level_1_train = self.level_1_train.groupby("taxonID").apply(lambda x:x.sample(frac=1).head(self.config["broadleaf_ceiling"])).reset_index(drop=True)                
         self.level_1_train["label"] = [self.level_label_dicts[1][x] for x in self.level_1_train.taxonID]
         self.level_1_train_ds = TreeDataset(df=self.level_1_train, config=self.config)
         

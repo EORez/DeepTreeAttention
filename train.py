@@ -115,6 +115,20 @@ visualize.confusion_matrix(
     rgb_pool=rgb_pool
 )
 
+#Confusion matrix for each level
+for x in range(len(m.models)):
+    results["pred_taxa_top1"] = results["pred_taxa_top1_level_{}".format(x)]
+    results["pred_label_top1"] = results["pred_label_top1_level_{}".format(x)]
+    visualize.confusion_matrix(
+        comet_experiment=comet_logger.experiment,
+        results=results,
+        species_label_dict=m.level_label_dicts[x],
+        test_crowns=data_module.crowns,
+        test=data_module.test,
+        test_points=data_module.canopy_points,
+        rgb_pool=rgb_pool
+    )
+
 #Within site confusion
 site_lists = data_module.train.groupby("label").site.unique()
 within_site_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.ens_label, site_lists=site_lists)

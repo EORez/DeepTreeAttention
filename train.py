@@ -116,9 +116,12 @@ visualize.confusion_matrix(
 )
 
 #Confusion matrix for each level
+m.test_df["individual"] = m.test_df["individualID"]
+results = results.merge(m.test_df, on="individual")
+
 for x in range(len(m.models)):
     results["pred_taxa_top1"] = results["pred_taxa_top1_level_{}".format(x)]
-    results["pred_label_top1"] = results["pred_label_top1_level_{}".format(x)]
+    results["pred_label_top1"] = results["pred_label_top1_level_{}".format(x)]    
     visualize.confusion_matrix(
         comet_experiment=comet_logger.experiment,
         results=results,

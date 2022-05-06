@@ -384,14 +384,13 @@ class MultiStage(LightningModule):
             num_classes=len(self.species_label_dict)
         )        
         
+        taxon_labels = list(self.species_label_dict)
+        taxon_labels.sort()
         species_table = pd.DataFrame(
-            {"taxonID":self.species_label_dict.keys(),
+            {"taxonID":taxon_labels,
              "accuracy":taxon_accuracy,
              "precision":taxon_precision
              })
-        
-        print("Species table")
-        print(species_table)
         
         if experiment:
             experiment.log_metrics(species_table.set_index("taxonID").accuracy.to_dict(),prefix="accuracy")

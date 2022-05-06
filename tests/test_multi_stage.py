@@ -30,7 +30,7 @@ def test_predict(config, dm):
 
 def test_gather_predictions(config, dm, comet_logger):
     m  = multi_stage.MultiStage(train_df=dm.train, test_df=dm.test, crowns=dm.crowns, config=config)
-    trainer = Trainer(fast_dev_run=False)
+    trainer = Trainer(fast_dev_run=True)
     predictions = trainer.predict(m, dataloaders=m.predict_dataloader(df=dm.test))
     predictions = m.gather_predictions(predict_df=predictions, crowns=dm.crowns)    
     predictions.shape[0] == config["batch_size"]

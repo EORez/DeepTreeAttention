@@ -134,14 +134,3 @@ for x in range(len(m.models)):
         test_points=data_module.canopy_points,
         rgb_pool=rgb_pool
     )
-
-#Within site confusion
-site_lists = data_module.train.groupby("label").site.unique()
-within_site_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.ens_label, site_lists=site_lists)
-comet_logger.experiment.log_metric("within_site_confusion", within_site_confusion)
-
-#Within plot confusion
-plot_lists = data_module.train.groupby("label").plotID.unique()
-within_plot_confusion = metrics.site_confusion(y_true = results.label, y_pred = results.ens_label, site_lists=plot_lists)
-comet_logger.experiment.log_metric("within_plot_confusion", within_plot_confusion)
-

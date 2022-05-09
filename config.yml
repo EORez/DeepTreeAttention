@@ -54,7 +54,7 @@ bands: 349
 lr: 0.00005
 fast_dev_run: False
 accelerator: dp
-epochs: 10
+epochs: 100
 
 #Evaluation config
 #Top k class recall score

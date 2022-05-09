@@ -149,7 +149,7 @@ for x in range(5):
         
         
         #Get metric names
-        print(experiment.metrics.keys())
+        print(comet_logger.experiment.metrics.keys())
               
         IFAS_micro.append(comet_logger.experiment.get_metric("IFAS_OSBS_micro"))
         IFAS_macro.append(comet_logger.experiment.get_metric("IFAS_OSBS_macro"))  

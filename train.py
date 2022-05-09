@@ -29,7 +29,7 @@ NEON_macro = []
 IFAS_micro = []
 IFAS_macro = []
 
-client = start_cluster.start(cpus=5, mem_size="8GB")    
+client = start_cluster.start(cpus=30, mem_size="8GB")    
 for x in range(5):
     #Create datamodule
     config = data.read_config("config.yml")

@@ -164,10 +164,10 @@ for x in range(5):
     #Log prediction
     comet_logger.experiment.log_table("test_predictions.csv", results)
     
-    NEON_micro.append(comet_logger.experiment.get_metric("OSBS_micro_NEON"))
-    NEON_macro.append(comet_logger.experiment.get_metric("OSBS_macro_NEON"))
-    IFAS_micro.append(comet_logger.experiment.get_metric("OSBS_micro_IFAS"))
-    IFAS_macro.append(comet_logger.experiment.get_metric("OSBS_macro_IFAS"))    
+    NEON_micro.append(comet_logger.experiment.get_metric("NEON_OSBS_micro"))
+    NEON_macro.append(comet_logger.experiment.get_metric("NEON_OSBS_macro"))
+    IFAS_micro.append(comet_logger.experiment.get_metric("IFAS_OSBS_micro"))
+    IFAS_macro.append(comet_logger.experiment.get_metric("IFAS_OSBS_macro"))    
     
-df = pd.DataFrame({"NEON_micro":NEON_micro,"NEON_macro":NEON_macro,"IFAS_micro":IFAS_micro,"IFAS_macro":IFAS_macro,"train":"IFAS"})
+df = pd.DataFrame({"NEON_micro":NEON_micro,"NEON_macro":NEON_macro,"IFAS_micro":IFAS_micro,"IFAS_macro":IFAS_macro})
 df.to_csv("results/IFAS_predicts_NEON_OSBS.csv")

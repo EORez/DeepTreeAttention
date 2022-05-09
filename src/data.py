@@ -114,7 +114,8 @@ def sample_plots(shp, min_train_samples=5, min_test_samples=3, iteration = 1):
         iteration: a dummy parameter to make dask submission unique
     """
     shp = shp[shp.individualID.str.contains("NEON")]
-    train = shp.groupby("taxonID").apply(lambda x: x.sample(frac=0.2))
+    train = shp.groupby("taxonID").apply(lambda x: x.sample(frac=0.8))
+    train = train.train.groupby("taxonID").apply(lambda x: x.head(100)).reset_index(drop=True)
     test = shp[~shp.individualID.isin(train.individualID)]
     test = test[test.taxonID.isin(train.taxonID)]
     train = train[train.taxonID.isin(test.taxonID)]
@@ -384,7 +385,6 @@ class TreeData(LightningDataModule):
             )
             
             #hard sampling cutoff
-            self.annotations = self.annotations.groupby("taxonID").apply(lambda x: x.head(self.config["sampling_ceiling"])).reset_index(drop=True)
             self.annotations.to_csv("{}/annotations.csv".format(self.data_dir))
         
             if self.comet_logger:

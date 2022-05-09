@@ -151,8 +151,8 @@ for x in range(5):
         #Get metric names
         print(comet_logger.experiment.metrics.keys())
               
-        IFAS_micro.append(comet_logger.experiment.get_metric("IFAS_OSBS_micro"))
-        IFAS_macro.append(comet_logger.experiment.get_metric("IFAS_OSBS_macro"))  
+        IFAS_micro.append(comet_logger.experiment.get_metric("OSBS_micro"))
+        IFAS_macro.append(comet_logger.experiment.get_metric("OSBS_macro"))  
         
     rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
     

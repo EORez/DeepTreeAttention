@@ -30,7 +30,7 @@ IFAS_micro = []
 IFAS_macro = []
 
 client = start_cluster.start(cpus=30, mem_size="8GB")    
-for x in range(5):
+for x in range(20):
     #Create datamodule
     config = data.read_config("config.yml")
     comet_logger = CometLogger(project_name="DeepTreeAttention", workspace=config["comet_workspace"], auto_output_logging="simple")    

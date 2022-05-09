@@ -111,6 +111,13 @@ for x in range(5):
             crowns = data_module.crowns,
             experiment=comet_logger.experiment,
         )
+        
+        
+        #Get metric names
+        print(experiment.metrics.keys())
+              
+        NEON_micro.append(comet_logger.experiment.get_metric("OSBS_micro"))
+        NEON_macro.append(comet_logger.experiment.get_metric("OSBS_macro"))        
     
     #Get a test dataset for IFAS data
     with comet_logger.experiment.context_manager("IFAS"):
@@ -138,7 +145,15 @@ for x in range(5):
             data_loader=data_loader,
             crowns = data_module.crowns,
             experiment=comet_logger.experiment,
-        )        
+        )
+        
+        
+        #Get metric names
+        print(experiment.metrics.keys())
+              
+        IFAS_micro.append(comet_logger.experiment.get_metric("IFAS_OSBS_micro"))
+        IFAS_macro.append(comet_logger.experiment.get_metric("IFAS_OSBS_macro"))  
+        
     rgb_pool = glob.glob(data_module.config["rgb_sensor_pool"], recursive=True)
     
     #Visualizations
@@ -163,11 +178,6 @@ for x in range(5):
     
     #Log prediction
     comet_logger.experiment.log_table("test_predictions.csv", results)
-    
-    NEON_micro.append(comet_logger.experiment.get_metric("NEON_OSBS_micro"))
-    NEON_macro.append(comet_logger.experiment.get_metric("NEON_OSBS_macro"))
-    IFAS_micro.append(comet_logger.experiment.get_metric("IFAS_OSBS_micro"))
-    IFAS_macro.append(comet_logger.experiment.get_metric("IFAS_OSBS_macro"))    
     
 df = pd.DataFrame({"NEON_micro":NEON_micro,"NEON_macro":NEON_macro,"IFAS_micro":IFAS_micro,"IFAS_macro":IFAS_macro})
 df.to_csv("results/IFAS_predicts_NEON_OSBS.csv")

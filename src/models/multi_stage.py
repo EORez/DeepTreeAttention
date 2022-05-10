@@ -218,12 +218,11 @@ class MultiStage(LightningModule):
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                              mode='min',
                                                              factor=0.75,
-                                                             patience=10,
+                                                             patience=5,
                                                              verbose=True,
                                                              threshold=0.0001,
                                                              threshold_mode='rel',
                                                              cooldown=0,
-                                                             min_lr=0.0000001,
                                                              eps=1e-08)
             
             optimizers.append({'optimizer':optimizer, 'lr_scheduler': {"scheduler":scheduler, "monitor":'val_loss/dataloader_idx_{}'.format(x)}})

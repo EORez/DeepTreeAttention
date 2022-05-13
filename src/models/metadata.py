@@ -1,5 +1,5 @@
 #Metadata model
-from src.models.Hang2020 import Hang2020
+from src.models.Hang2020 import spectral_network
 from src import main
 from torch.nn import Module
 from torch.nn import functional as F
@@ -29,7 +29,7 @@ class metadata_sensor_fusion(Module):
         super(metadata_sensor_fusion,self).__init__()   
         
         self.metadata_model = metadata(sites, classes)
-        self.sensor_model = Hang2020(bands, classes)
+        self.sensor_model = spectral_network(bands, classes)
                 
         #Fully connected concat learner
         self.fc1 = nn.Linear(in_features = classes *2 , out_features = classes)
@@ -37,6 +37,9 @@ class metadata_sensor_fusion(Module):
     def forward(self, images, metadata):
         metadata_softmax = self.metadata_model(metadata)
         sensor_softmax = self.sensor_model(images)
+        
+        #Last  block
+        sensor_softmax = sensor_softmax[-1]
         concat_features = torch.cat([metadata_softmax, sensor_softmax], dim=1)
         concat_features = self.fc1(concat_features)
         concat_features = F.relu(concat_features)

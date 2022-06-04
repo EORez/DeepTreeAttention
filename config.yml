@@ -26,7 +26,7 @@ megaplot_dir: /orange/idtrees-collab/megaplot/
 
 #Crop generation, whether to make a new dataset and customize which parts to recreate
 #Checkout data artifact from comet
-use_data_commit: 110ac77ae89043898f618466359c2a2e
+use_data_commit: 
 
 #Make new dataset
 data_dir: /blue/ewhite/b.weinstein/DeepTreeAttention/
@@ -34,12 +34,12 @@ convert_h5: True
 #Overwrite existing crops
 replace: True
 #Use existing plotIDs for train/test split
-new_train_test_split: True
+existing_test_csv: /blue/ewhite/b.weinstein/DeepTreeAttention/110ac77ae89043898f618466359c2a2e/test.csv
 
 #How many samples from non-osbs sites can we use per species
 samples_from_other_sites: 0
 oaks_sampling_ceiling: 200
-PIPA2_sampling_ceiling: 2000
+PIPA2_sampling_ceiling: 1000
 broadleaf_ceiling: 200
 
 # Data loader

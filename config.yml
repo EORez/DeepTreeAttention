@@ -26,7 +26,7 @@ megaplot_dir: /orange/idtrees-collab/megaplot/
 
 #Crop generation, whether to make a new dataset and customize which parts to recreate
 #Checkout data artifact from comet
-use_data_commit:
+use_data_commit: 1fb724ba21cc4913857174f8fc63cc02
 
 #Make new dataset
 data_dir: /blue/ewhite/b.weinstein/DeepTreeAttention/
@@ -38,9 +38,9 @@ existing_test_csv: /blue/ewhite/b.weinstein/DeepTreeAttention/110ac77ae89043898f
 
 #How many samples from non-osbs sites can we use per species
 samples_from_other_sites: 0
-oaks_sampling_ceiling: 200
+oaks_sampling_ceiling: 1000
 PIPA2_sampling_ceiling: 1000
-broadleaf_ceiling: 200
+broadleaf_ceiling: 1000
 
 # Data loader
 #resized Pixel size of the crowns. Square crops around each pixel of size x are used

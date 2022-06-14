@@ -49,7 +49,7 @@ PIPA2_sampling_ceiling: 1000
 broadleaf_ceiling: 25
 
 #Network Parameters
-pretrain_state_dict: /blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/3febd94f4aa64244bf91e6714b987106.pt
+pretrain_state_dict: /blue/ewhite/b.weinstein/DeepTreeAttention/snapshots/0e24fd72a0924c87a28dfb6c804d7b7c.pt
 gpus: 1
 batch_size: 128
 bands: 349
